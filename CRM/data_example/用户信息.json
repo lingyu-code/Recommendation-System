@@ -1,0 +1,52 @@
+[
+  {
+    "user_id": "student_001",
+    "username": "张三",
+    "age": 22,
+    "occupation": "学生",
+    "family_status": "未婚",
+    "total_assets": 15000,
+    "risk_tolerance": "稳健型",
+    "investment_experience": "1年以下",
+    "investment_goal": "资产增值",
+    "asset_distribution": {
+      "cash": 60,
+      "stocks": 20,
+      "funds": 15,
+      "others": 5
+    },
+    "held_stocks": ["000001", "600036"],
+    "held_funds": [1, 4],
+    "held_insurance": ["意外险"],
+    "preferences": {
+      "investment_horizon": "中期",
+      "liquidity_needs": "中等",
+      "industry_preference": ["科技", "消费"]
+    }
+  },
+  {
+    "user_id": "young_worker_001", 
+    "username": "李四",
+    "age": 28,
+    "occupation": "工程师",
+    "family_status": "已婚",
+    "total_assets": 150000,
+    "risk_tolerance": "积极型",
+    "investment_experience": "3-5年",
+    "investment_goal": "财富积累",
+    "asset_distribution": {
+      "cash": 30,
+      "stocks": 45,
+      "funds": 20,
+      "others": 5
+    },
+    "held_stocks": ["000858", "601318", "600519"],
+    "held_funds": [2, 3, 5],
+    "held_insurance": ["医疗险", "意外险"],
+    "preferences": {
+      "investment_horizon": "长期",
+      "liquidity_needs": "较低",
+      "industry_preference": ["科技", "新能源", "医疗"]
+    }
+  }
+]
