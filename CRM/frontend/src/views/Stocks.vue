@@ -14,14 +14,14 @@
               <option value="能源">能源</option>
               <option value="工业">工业</option>
             </select>
-            
+
             <select v-model="filterTrend" class="select">
               <option value="">趋势</option>
               <option value="up">上涨</option>
               <option value="down">下跌</option>
               <option value="sideways">震荡</option>
             </select>
-            
+
             <button class="btn btn-primary" @click="loadStocks">筛选</button>
           </div>
         </div>
@@ -64,7 +64,8 @@
               <td>
                 <div class="rating">
                   <span class="stars">
-                    <span v-for="n in 5" :key="n" class="star" :class="{ active: n <= Math.floor(stock.recommendation_score) }">
+                    <span v-for="n in 5" :key="n" class="star"
+                      :class="{ active: n <= Math.floor(stock.recommendation_score) }">
                       ★
                     </span>
                   </span>
@@ -97,18 +98,19 @@
             <option value="50">50条/页</option>
             <option value="100">100条/页</option>
           </select>
-          
-          <button class="btn btn-sm" :disabled="currentPage === 1" @click="currentPage--">
+
+          <button class="btn btn-sm" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
             上一页
           </button>
-          
+
           <span class="page-info">
             第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
           </span>
-          
-          <button class="btn btn-sm" :disabled="currentPage === totalPages" @click="currentPage++">
+
+          <button class="btn btn-sm" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">
             下一页
           </button>
+
         </div>
       </div>
     </div>
@@ -229,13 +231,7 @@
           </div>
           <div class="form-group">
             <label>交易数量:</label>
-            <input 
-              type="number" 
-              v-model.number="tradeForm.quantity" 
-              :min="100"
-              :step="100"
-              class="input"
-            />
+            <input type="number" v-model.number="tradeForm.quantity" :min="100" :step="100" class="input" />
             <div class="help-text">
               最小交易单位: 100股
             </div>
@@ -261,24 +257,26 @@
 </template>
 
 <script>
+import { apiService } from '../api'
+
 export default {
   name: 'Stocks',
   data() {
     return {
       stocks: [],
-      filteredStocks: [],
+      filteredStocks: [],   // ✅ 加上这个
       loading: false,
       currentPage: 1,
       pageSize: 10,
       totalStocks: 0,
-      
+
       filterIndustry: '',
       filterTrend: '',
-      
+
       detailDialogVisible: false,
       selectedStock: null,
       similarStocks: [],
-      
+
       tradeDialogVisible: false,
       tradeForm: {
         type: 'buy',
@@ -291,9 +289,7 @@ export default {
       return Math.ceil(this.totalStocks / this.pageSize)
     },
     paginatedStocks() {
-      const start = (this.currentPage - 1) * this.pageSize
-      const end = start + this.pageSize
-      return this.filteredStocks.slice(start, end)
+      return this.filteredStocks   // ✅ 用过滤后的数据
     }
   },
   async mounted() {
@@ -303,107 +299,113 @@ export default {
     async loadStocks() {
       this.loading = true
       try {
-        // 模拟API调用获取股票数据
-        this.stocks = [
-          {
-            id: 1,
-            name: '腾讯控股',
-            code: '00700',
-            industry: '科技',
-            current_price: 320.50,
-            change_percent: 2.15,
-            pe_ratio: 25.8,
-            market_cap: 3800000000000,
-            high_52w: 450.00,
-            low_52w: 280.00,
-            trend: 'up',
-            description: '中国领先的互联网增值服务提供商，主要业务包括社交、游戏、数字内容等。',
-            recommendation_score: 4.3
-          },
-          {
-            id: 2,
-            name: '贵州茅台',
-            code: '600519',
-            industry: '消费',
-            current_price: 1680.00,
-            change_percent: -1.25,
-            pe_ratio: 35.2,
-            market_cap: 2100000000000,
-            high_52w: 2000.00,
-            low_52w: 1500.00,
-            trend: 'sideways',
-            description: '中国白酒行业的龙头企业，以生产茅台酒闻名。',
-            recommendation_score: 4.1
-          },
-          {
-            id: 3,
-            name: '招商银行',
-            code: '600036',
-            industry: '金融',
-            current_price: 32.80,
-            change_percent: 0.92,
-            pe_ratio: 8.5,
-            market_cap: 850000000000,
-            high_52w: 40.00,
-            low_52w: 28.00,
-            trend: 'up',
-            description: '中国领先的商业银行之一，以零售业务和财富管理见长。',
-            recommendation_score: 4.0
-          },
-          {
-            id: 4,
-            name: '宁德时代',
-            code: '300750',
-            industry: '能源',
-            current_price: 185.60,
-            change_percent: 3.45,
-            pe_ratio: 42.3,
-            market_cap: 820000000000,
-            high_52w: 220.00,
-            low_52w: 160.00,
-            trend: 'up',
-            description: '全球领先的动力电池系统提供商，专注于新能源汽车动力电池系统。',
-            recommendation_score: 4.5
-          },
-          {
-            id: 5,
-            name: '恒瑞医药',
-            code: '600276',
-            industry: '医疗',
-            current_price: 45.20,
-            change_percent: -0.88,
-            pe_ratio: 38.7,
-            market_cap: 290000000000,
-            high_52w: 60.00,
-            low_52w: 40.00,
-            trend: 'down',
-            description: '中国领先的创新型制药企业，专注于抗肿瘤药、手术用药等。',
-            recommendation_score: 3.8
-          }
-        ]
+        // 调用 API，传递分页和筛选参数
+        const response = await apiService.getStocks({
+          page: this.currentPage,
+          page_size: this.pageSize,
+          industry: this.filterIndustry || undefined,
+          trend: this.filterTrend || undefined
+        })
 
-        // 应用筛选
-        this.applyFilters()
-        this.totalStocks = this.filteredStocks.length
-        
+        if (response && response.results) {
+          this.stocks = response.results.map(stock => ({
+            id: stock.id,
+            name: stock.name,
+            code: stock.symbol,
+            industry: stock.industry,
+            current_price: this.calculateCurrentPrice(),
+            change_percent: this.calculateChangePercent(),
+            pe_ratio: this.calculatePERatio(),
+            market_cap: this.calculateMarketCap(),
+            high_52w: this.calculate52WeekHigh(),
+            low_52w: this.calculate52WeekLow(),
+            trend: this.calculateTrend(),
+            description: `${stock.name}是${stock.area}地区${stock.industry}行业的上市公司，于${stock.list_date}上市。`,
+            recommendation_score: this.calculateRecommendationScore(stock)
+          }))
+          this.totalStocks = response.count || 0
+          this.applyFilters()   // ✅ 加上
+        } else {
+          this.stocks = []
+          this.totalStocks = 0
+        }
       } catch (error) {
         console.error('加载股票数据失败:', error)
+        this.stocks = []
+        this.totalStocks = 0
       } finally {
         this.loading = false
       }
     },
 
+    // 计算当前价格（模拟）
+    calculateCurrentPrice() {
+      return Math.random() * 100 + 10
+    },
+
+    // 计算涨跌幅（模拟）
+    calculateChangePercent() {
+      return (Math.random() - 0.5) * 10
+    },
+
+    // 计算市盈率（模拟）
+    calculatePERatio() {
+      return Math.random() * 50 + 10
+    },
+
+    // 计算市值（模拟）
+    calculateMarketCap() {
+      return Math.random() * 1000000000000 + 10000000000
+    },
+
+    // 计算52周最高（模拟）
+    calculate52WeekHigh() {
+      return Math.random() * 50 + 100
+    },
+
+    // 计算52周最低（模拟）
+    calculate52WeekLow() {
+      return Math.random() * 50 + 50
+    },
+
+    // 计算趋势（模拟）
+    calculateTrend() {
+      const trends = ['up', 'down', 'sideways']
+      return trends[Math.floor(Math.random() * trends.length)]
+    },
+
+    // 计算推荐分数
+    calculateRecommendationScore(stock) {
+      // 基于行业和上市时间计算推荐分数
+      let score = 3.0
+      const industryBonus = {
+        '科技': 0.5,
+        '消费': 0.3,
+        '医疗': 0.4,
+        '新能源': 0.6,
+        '金融': 0.2
+      }
+      score += industryBonus[stock.industry] || 0
+
+      // 上市时间越久，分数越高
+      const listDate = new Date(stock.list_date)
+      const yearsSinceList = (new Date().getFullYear() - listDate.getFullYear())
+      score += Math.min(yearsSinceList * 0.1, 1.0)
+
+      return Math.min(score, 5.0)
+    },
+
     applyFilters() {
       let filtered = [...this.stocks]
-      
+
       if (this.filterIndustry) {
         filtered = filtered.filter(stock => stock.industry === this.filterIndustry)
       }
-      
+
       if (this.filterTrend) {
         filtered = filtered.filter(stock => stock.trend === this.filterTrend)
       }
-      
+
       this.filteredStocks = filtered
     },
 
@@ -438,7 +440,7 @@ export default {
     async viewStockDetail(stock) {
       this.selectedStock = stock
       this.detailDialogVisible = true
-      
+
       // 模拟获取相似股票
       this.similarStocks = this.stocks
         .filter(s => s.id !== stock.id && s.industry === stock.industry)
@@ -460,7 +462,18 @@ export default {
 
     handleSizeChange() {
       this.currentPage = 1
+    },
+    async changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page
+        await this.loadStocks()
+      }
+    },
+    async handleSizeChange() {
+      this.currentPage = 1
+      await this.loadStocks()
     }
+
   }
 }
 </script>

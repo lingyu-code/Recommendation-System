@@ -50,6 +50,14 @@ cd frontend
 npm install
 npm run serve
 ```
+### 数据库设置
+```bash
+cd backend
+python manage.py import_stock_info --file=data/StockInfo.csv
+python manage.py import_stock_daily --file=data/StockDailyData.csv
+python manage.py import_insurance_products --file=data/InsuranceProducts.csv
+python manage.py import_funds --file=data/Fund.csv
+```
 
 ## 数据说明
 

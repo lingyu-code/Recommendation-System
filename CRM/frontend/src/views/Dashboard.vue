@@ -171,6 +171,7 @@
 
 <script>
 import * as echarts from 'echarts'
+import { apiService } from '../api'
 
 export default {
   name: 'Dashboard',
@@ -182,13 +183,14 @@ export default {
       todayProfit: 2345,
       recommendedProducts: 12,
       activeTab: 'funds',
-      
+
       recommendedFunds: [],
       recommendedStocks: [],
       recommendedInsurance: [],
 
       assetChart: null,
-      profitChart: null
+      profitChart: null,
+      loading: false
     }
   },
   computed: {
@@ -196,7 +198,7 @@ export default {
       const risk = localStorage.getItem('userRisk')
       const riskMap = {
         'low': '保守型',
-        'medium': '稳健型', 
+        'medium': '稳健型',
         'high': '进取型'
       }
       return riskMap[risk] || '未知'
@@ -219,66 +221,47 @@ export default {
       const userId = localStorage.getItem('userId')
       if (!userId) return
 
+      this.loading = true
       try {
-        // 模拟API调用获取推荐数据
-        this.recommendedFunds = [
-          {
-            id: 1,
-            name: '华夏成长混合基金',
-            code: '000001',
-            type: '混合型',
-            risk_level: 'medium',
-            expected_return: 0.086
-          },
-          {
-            id: 2,
-            name: '易方达消费行业',
-            code: '110022',
-            type: '股票型',
-            risk_level: 'high',
-            expected_return: 0.124
-          }
-        ]
+        // 获取用户风险偏好
+        const userRisk = localStorage.getItem('userRisk') || 'medium'
 
-        this.recommendedStocks = [
-          {
-            id: 1,
-            name: '贵州茅台',
-            code: '600519',
-            industry: '食品饮料',
-            pe_ratio: 35.2,
-            dividend_yield: 0.012
-          },
-          {
-            id: 2,
-            name: '宁德时代',
-            code: '300750',
-            industry: '新能源',
-            pe_ratio: 42.8,
-            dividend_yield: 0.008
-          }
-        ]
+        // 调用真实API获取推荐数据
+        const userData = {
+          age: 30,
+          risk_tolerance: userRisk,
+          total_assets: 100000,
+          investment_goal: '财富增值',
+          limit: 5
+        }
 
-        this.recommendedInsurance = [
-          {
-            id: 1,
-            name: '平安健康险',
-            type: '健康保险',
-            premium: 5000,
-            duration: 10,
-            risk_level: 'low'
-          },
-          {
-            id: 2,
-            name: '人寿养老保险',
-            type: '养老保险',
-            premium: 8000,
-            duration: 20,
-            risk_level: 'medium'
-          }
-        ]
+        const response = await apiService.getRecommendations(userData)
+
+        // 设置推荐数据 - 检查响应结构
+        if (response && typeof response === 'object') {
+          this.recommendedFunds = response.funds || []
+          this.recommendedStocks = response.stocks || []
+          this.recommendedInsurance = response.insurance || []
+        } else {
+          // 如果响应不是对象，使用空数组
+          this.recommendedFunds = []
+          this.recommendedStocks = []
+          this.recommendedInsurance = []
+        }
+
+        // 更新推荐产品数量
+        this.recommendedProducts = this.recommendedFunds.length +
+          this.recommendedStocks.length +
+          this.recommendedInsurance.length
+
       } catch (error) {
         console.error('加载推荐数据失败:', error)
+        // 如果API调用失败，显示空数据
+        this.recommendedFunds = []
+        this.recommendedStocks = []
+        this.recommendedInsurance = []
+      } finally {
+        this.loading = false
       }
     },
 

@@ -11,7 +11,7 @@
               <option value="medium">中风险</option>
               <option value="high">高风险</option>
             </select>
-            
+
             <select v-model="filterType" class="select">
               <option value="">基金类型</option>
               <option value="股票型">股票型</option>
@@ -19,7 +19,7 @@
               <option value="债券型">债券型</option>
               <option value="货币型">货币型</option>
             </select>
-            
+
             <button class="btn btn-primary" @click="loadFunds">筛选</button>
           </div>
         </div>
@@ -60,7 +60,8 @@
               <td>
                 <div class="rating">
                   <span class="stars">
-                    <span v-for="n in 5" :key="n" class="star" :class="{ active: n <= Math.floor(fund.recommendation_score) }">
+                    <span v-for="n in 5" :key="n" class="star"
+                      :class="{ active: n <= Math.floor(fund.recommendation_score) }">
                       ★
                     </span>
                   </span>
@@ -93,16 +94,16 @@
             <option value="50">50条/页</option>
             <option value="100">100条/页</option>
           </select>
-          
-          <button class="btn btn-sm" :disabled="currentPage === 1" @click="currentPage--">
+
+          <button class="btn btn-sm" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
             上一页
           </button>
-          
+
           <span class="page-info">
             第 {{ currentPage }} 页 / 共 {{ totalPages }} 页
           </span>
-          
-          <button class="btn btn-sm" :disabled="currentPage === totalPages" @click="currentPage++">
+
+          <button class="btn btn-sm" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">
             下一页
           </button>
         </div>
@@ -192,12 +193,8 @@
         <div class="modal-body" v-if="selectedFund">
           <div class="form-group">
             <label>投资金额:</label>
-            <input 
-              type="number" 
-              v-model.number="investmentForm.amount" 
-              :min="selectedFund.min_investment"
-              class="input"
-            />
+            <input type="number" v-model.number="investmentForm.amount" :min="selectedFund.min_investment"
+              class="input" />
             <div class="help-text">
               最低投资金额: ¥{{ selectedFund.min_investment.toLocaleString() }}
             </div>
@@ -222,24 +219,25 @@
 </template>
 
 <script>
+import { apiService } from '../api'
+
 export default {
   name: 'Funds',
   data() {
     return {
       funds: [],
-      filteredFunds: [],
       loading: false,
       currentPage: 1,
       pageSize: 10,
       totalFunds: 0,
-      
+
       filterRisk: '',
       filterType: '',
-      
+
       detailDialogVisible: false,
       selectedFund: null,
       similarFunds: [],
-      
+
       investmentDialogVisible: false,
       investmentForm: {
         amount: 0
@@ -250,10 +248,9 @@ export default {
     totalPages() {
       return Math.ceil(this.totalFunds / this.pageSize)
     },
+    // 后端分页，直接用 funds
     paginatedFunds() {
-      const start = (this.currentPage - 1) * this.pageSize
-      const end = start + this.pageSize
-      return this.filteredFunds.slice(start, end)
+      return this.funds
     }
   },
   async mounted() {
@@ -263,81 +260,71 @@ export default {
     async loadFunds() {
       this.loading = true
       try {
-        // 模拟API调用获取基金数据
-        this.funds = [
-          {
-            id: 1,
-            name: '华夏成长混合基金',
-            code: '000001',
-            type: '混合型',
-            risk_level: 'medium',
-            expected_return: 0.086,
-            management_fee: 0.015,
-            min_investment: 1000,
-            description: '主要投资于具有良好成长性的上市公司股票，追求长期资本增值。',
-            recommendation_score: 4.5
-          },
-          {
-            id: 2,
-            name: '易方达消费行业',
-            code: '110022',
-            type: '股票型',
-            risk_level: 'high',
-            expected_return: 0.124,
-            management_fee: 0.018,
-            min_investment: 1000,
-            description: '专注于消费行业投资，把握消费升级带来的投资机会。',
-            recommendation_score: 4.2
-          },
-          {
-            id: 3,
-            name: '招商安心收益债券',
-            code: '217011',
-            type: '债券型',
-            risk_level: 'low',
-            expected_return: 0.045,
-            management_fee: 0.008,
-            min_investment: 100,
-            description: '主要投资于高信用等级的债券，追求稳定收益。',
-            recommendation_score: 4.0
-          },
-          {
-            id: 4,
-            name: '天弘余额宝货币',
-            code: '000198',
-            type: '货币型',
-            risk_level: 'low',
-            expected_return: 0.025,
-            management_fee: 0.003,
-            min_investment: 1,
-            description: '货币市场基金，流动性强，风险极低。',
-            recommendation_score: 3.8
-          }
-        ]
+        // 调用 API，传递分页和筛选参数
+        const response = await apiService.getFunds({
+          page: this.currentPage,
+          page_size: this.pageSize,
+          risk: this.filterRisk || undefined,
+          type: this.filterType || undefined
+        })
 
-        // 应用筛选
-        this.applyFilters()
-        this.totalFunds = this.filteredFunds.length
-        
+        if (response && response.results) {
+          this.funds = response.results.map(fund => ({
+            id: fund.id,
+            name: fund.name,
+            code: fund.code,
+            type: fund.fund_type,
+            risk_level: this.calculateRiskLevel(fund),
+            expected_return: this.calculateExpectedReturn(fund),
+            management_fee: fund.fee || 0.015,
+            min_investment: 1000,
+            description: `${fund.name}由${fund.managers}管理，${fund.company}发行。`,
+            recommendation_score: this.calculateRecommendationScore(fund)
+          }))
+          this.totalFunds = response.count || 0
+        } else {
+          this.funds = []
+          this.totalFunds = 0
+        }
       } catch (error) {
         console.error('加载基金数据失败:', error)
+        this.funds = []
+        this.totalFunds = 0
       } finally {
         this.loading = false
       }
     },
 
-    applyFilters() {
-      let filtered = [...this.funds]
-      
-      if (this.filterRisk) {
-        filtered = filtered.filter(fund => fund.risk_level === this.filterRisk)
+    calculateRiskLevel(fund) {
+      const riskMap = {
+        '股票型': 'high',
+        '混合型': 'medium',
+        '债券型': 'low',
+        '货币型': 'low'
       }
-      
-      if (this.filterType) {
-        filtered = filtered.filter(fund => fund.type === this.filterType)
+      return riskMap[fund.fund_type] || 'medium'
+    },
+
+    calculateExpectedReturn(fund) {
+      const baseReturn = fund.star_count ? (fund.star_count / 5) * 0.15 : 0.08
+      const typeMultiplier = {
+        '股票型': 1.2,
+        '混合型': 1.0,
+        '债券型': 0.6,
+        '货币型': 0.3
       }
-      
-      this.filteredFunds = filtered
+      return baseReturn * (typeMultiplier[fund.fund_type] || 1.0)
+    },
+
+    calculateRecommendationScore(fund) {
+      let score = 3.0
+      if (fund.star_count) {
+        score += (fund.star_count / 5) * 2
+      }
+      if (fund.fee && fund.fee < 0.01) {
+        score += 0.5
+      }
+      return Math.min(score, 5.0)
     },
 
     getRiskTagClass(riskLevel) {
@@ -361,8 +348,6 @@ export default {
     async viewFundDetail(fund) {
       this.selectedFund = fund
       this.detailDialogVisible = true
-      
-      // 模拟获取相似基金
       this.similarFunds = this.funds
         .filter(f => f.id !== fund.id && f.type === fund.type)
         .slice(0, 3)
@@ -379,12 +364,21 @@ export default {
       this.investmentDialogVisible = false
     },
 
-    handleSizeChange() {
+    async handleSizeChange() {
       this.currentPage = 1
+      await this.loadFunds()
+    },
+
+    async changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page
+        await this.loadFunds()
+      }
     }
   }
 }
 </script>
+
 
 <style scoped>
 .funds {
