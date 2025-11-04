@@ -4,7 +4,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from collections import defaultdict
 import math
-from .models import Insurance, Fund, Stock, UserProfile, ClickHistory, UserHolding
+from .models import InsuranceProduct, Fund, StockInfo, StockDailyData
 
 class RecommendationEngine:
     """推荐算法引擎"""
@@ -37,7 +37,7 @@ class RecommendationEngine:
     def _knn_insurance_recommendation(self, user_profile, limit):
         """KNN保险推荐"""
         # 获取所有保险产品
-        all_insurances = list(Insurance.objects.all())
+        all_insurances = list(InsuranceProduct.objects.all())
         if not all_insurances:
             return []
         
@@ -62,9 +62,11 @@ class RecommendationEngine:
                 recommendations.append({
                     'id': insurance.id,
                     'name': insurance.name,
-                    'type': insurance.insurance_type,
-                    'premium': float(insurance.premium),
-                    'description': insurance.description,
+                    'category': insurance.category,
+                    'subcategory': insurance.subcategory,
+                    'coverage_summary': insurance.coverage_summary,
+                    'payout_limit': insurance.payout_limit,
+                    'base_premium': insurance.base_premium,
                     'score': 1.0 / (distances[0][idx] + 1e-6),
                     'algorithm': 'KNN'
                 })
@@ -73,7 +75,7 @@ class RecommendationEngine:
     
     def _cosine_insurance_recommendation(self, user_profile, limit):
         """余弦相似度保险推荐"""
-        all_insurances = list(Insurance.objects.all())
+        all_insurances = list(InsuranceProduct.objects.all())
         if not all_insurances:
             return []
         
@@ -95,9 +97,11 @@ class RecommendationEngine:
             recommendations.append({
                 'id': insurance.id,
                 'name': insurance.name,
-                'type': insurance.insurance_type,
-                'premium': float(insurance.premium),
-                'description': insurance.description,
+                'category': insurance.category,
+                'subcategory': insurance.subcategory,
+                'coverage_summary': insurance.coverage_summary,
+                'payout_limit': insurance.payout_limit,
+                'base_premium': insurance.base_premium,
                 'score': similarity,
                 'algorithm': 'Cosine Similarity'
             })
@@ -161,8 +165,9 @@ class RecommendationEngine:
                 'code': fund.code,
                 'name': fund.name,
                 'type': fund.fund_type,
-                'net_value': float(fund.net_value),
-                'daily_change': float(fund.daily_change),
+                'managers': fund.managers,
+                'company': fund.company,
+                'star_count': fund.star_count,
                 'score': similarity,
                 'algorithm': 'Collaborative Filtering'
             })
@@ -171,18 +176,19 @@ class RecommendationEngine:
     
     def _risk_based_fund_recommendation(self, user_profile, limit):
         """基于风险偏好的基金推荐"""
+        # 根据风险偏好映射到基金类型
         risk_mapping = {
-            'low': ['low'],
-            'medium': ['low', 'medium'],
-            'high': ['low', 'medium', 'high']
+            'low': ['货币型', '债券型'],
+            'medium': ['货币型', '债券型', '混合型'],
+            'high': ['货币型', '债券型', '混合型', '股票型']
         }
         
-        allowed_risk_levels = risk_mapping.get(user_profile.risk_tolerance, ['low'])
-        suitable_funds = Fund.objects.filter(risk_level__in=allowed_risk_levels)
+        allowed_fund_types = risk_mapping.get(user_profile.risk_tolerance, ['货币型', '债券型'])
+        suitable_funds = Fund.objects.filter(fund_type__in=allowed_fund_types)
         
-        # 按收益率排序
+        # 按星级排序
         sorted_funds = sorted(suitable_funds, 
-                            key=lambda x: abs(float(x.daily_change)), 
+                            key=lambda x: x.star_count if x.star_count else 0, 
                             reverse=True)
         
         recommendations = []
@@ -192,8 +198,9 @@ class RecommendationEngine:
                 'code': fund.code,
                 'name': fund.name,
                 'type': fund.fund_type,
-                'net_value': float(fund.net_value),
-                'daily_change': float(fund.daily_change),
+                'managers': fund.managers,
+                'company': fund.company,
+                'star_count': fund.star_count,
                 'score': 0.8,  # 基础分数
                 'algorithm': 'Risk-Based'
             })
@@ -202,8 +209,8 @@ class RecommendationEngine:
     
     def _popular_fund_recommendation(self, limit):
         """热度基金推荐"""
-        # 按点击量或收益率排序
-        popular_funds = Fund.objects.all().order_by('-daily_change')[:limit]
+        # 按星级排序
+        popular_funds = Fund.objects.all().order_by('-star_count')[:limit]
         
         recommendations = []
         for fund in popular_funds:
@@ -212,8 +219,9 @@ class RecommendationEngine:
                 'code': fund.code,
                 'name': fund.name,
                 'type': fund.fund_type,
-                'net_value': float(fund.net_value),
-                'daily_change': float(fund.daily_change),
+                'managers': fund.managers,
+                'company': fund.company,
+                'star_count': fund.star_count,
                 'score': 0.7,  # 基础分数
                 'algorithm': 'Popularity'
             })
@@ -244,27 +252,32 @@ class RecommendationEngine:
     
     def _industry_based_stock_recommendation(self, user_profile, limit):
         """基于行业相关性的股票推荐"""
-        # 获取用户持有的股票行业
-        user_holdings = UserHolding.objects.filter(user=user_profile.user, stock__isnull=False)
-        user_industries = set(holding.stock.industry for holding in user_holdings if holding.stock)
-        
-        all_stocks = list(Stock.objects.all())
+        # 获取所有股票
+        all_stocks = list(StockInfo.objects.all())
         
         recommendations = []
         for stock in all_stocks:
-            # 计算行业相关性分数
-            industry_score = 1.0 if stock.industry in user_industries else 0.3
+            # 基于风险偏好选择行业
+            risk_industry_mapping = {
+                'low': ['银行', '公用事业', '食品饮料'],
+                'medium': ['银行', '公用事业', '食品饮料', '医药生物', '电子'],
+                'high': ['计算机', '传媒', '通信', '电子', '医药生物']
+            }
             
-            # 综合分数（行业相关性 + 涨跌幅）
-            trend_score = min(1.0, max(0.1, abs(float(stock.change_rate)) / 10.0))
-            total_score = industry_score * 0.6 + trend_score * 0.4
+            preferred_industries = risk_industry_mapping.get(user_profile.risk_tolerance, ['银行', '公用事业'])
+            industry_score = 1.0 if stock.industry in preferred_industries else 0.3
+            
+            # 综合分数（行业相关性 + 随机因素）
+            import random
+            random_score = random.uniform(0.5, 0.9)
+            total_score = industry_score * 0.6 + random_score * 0.4
             
             recommendations.append({
-                'code': stock.code,
+                'code': stock.ts_code,
+                'symbol': stock.symbol,
                 'name': stock.name,
                 'industry': stock.industry,
-                'current_price': float(stock.current_price),
-                'change_rate': float(stock.change_rate),
+                'area': stock.area,
                 'score': total_score,
                 'algorithm': 'Industry Correlation'
             })
@@ -275,25 +288,40 @@ class RecommendationEngine:
     
     def _trend_based_stock_recommendation(self, limit):
         """基于趋势分析的股票推荐"""
-        # 按涨跌幅排序
-        trending_stocks = Stock.objects.all().order_by('-change_rate')[:limit*2]
+        # 获取最新的股票数据（按交易日期排序）
+        from django.db.models import Max
+        latest_date = StockDailyData.objects.aggregate(Max('trade_date'))['trade_date__max']
         
-        recommendations = []
-        for stock in trending_stocks:
-            # 计算趋势分数
-            trend_score = min(1.0, max(0.1, float(stock.change_rate) / 10.0 + 0.5))
+        if latest_date:
+            # 获取最新日期的股票数据
+            latest_stocks = StockDailyData.objects.filter(trade_date=latest_date)
             
-            recommendations.append({
-                'code': stock.code,
-                'name': stock.name,
-                'industry': stock.industry,
-                'current_price': float(stock.current_price),
-                'change_rate': float(stock.change_rate),
-                'score': trend_score,
-                'algorithm': 'Trend Analysis'
-            })
+            recommendations = []
+            for stock_data in latest_stocks:
+                try:
+                    stock_info = StockInfo.objects.get(ts_code=stock_data.ts_code)
+                    
+                    # 计算趋势分数（基于涨跌幅）
+                    trend_score = min(1.0, max(0.1, abs(stock_data.pct_chg) / 10.0 + 0.5))
+                    
+                    recommendations.append({
+                        'code': stock_info.ts_code,
+                        'symbol': stock_info.symbol,
+                        'name': stock_info.name,
+                        'industry': stock_info.industry,
+                        'current_price': stock_data.close,
+                        'change_rate': stock_data.pct_chg,
+                        'score': trend_score,
+                        'algorithm': 'Trend Analysis'
+                    })
+                except StockInfo.DoesNotExist:
+                    continue
+            
+            # 按分数排序
+            recommendations.sort(key=lambda x: x['score'], reverse=True)
+            return recommendations[:limit]
         
-        return recommendations[:limit]
+        return []
     
     def _build_user_features(self, user_profile):
         """构建用户特征向量"""
@@ -311,25 +339,30 @@ class RecommendationEngine:
     
     def _build_insurance_features(self, insurance, user_profile):
         """构建保险特征向量"""
-        # 保费归一化（假设最大保费10000）
-        premium_norm = min(float(insurance.premium) / 10000.0, 1.0)
-        
-        # 年龄匹配度
-        age_range = insurance.suitable_ages.split('-')
-        if len(age_range) == 2:
-            min_age, max_age = int(age_range[0]), int(age_range[1])
-            age_match = 1.0 if min_age <= user_profile.age <= max_age else 0.3
-        else:
-            age_match = 0.5
+        # 保费估算（从base_premium中提取数字）
+        import re
+        premium_match = re.search(r'(\d+)', insurance.base_premium)
+        premium_value = float(premium_match.group(1)) if premium_match else 5000
+        premium_norm = min(premium_value / 10000.0, 1.0)
         
         # 保险类型编码
-        type_mapping = {
+        category_mapping = {
             '意外险': 0.2, '医疗险': 0.4, '寿险': 0.6, 
             '重疾险': 0.8, '养老险': 0.7, '财产险': 0.3
         }
-        type_score = type_mapping.get(insurance.insurance_type, 0.5)
+        category_score = category_mapping.get(insurance.category, 0.5)
         
-        return [premium_norm, age_match, type_score]
+        # 标签匹配度（简单实现）
+        tags = insurance.tags.lower() if insurance.tags else ''
+        tag_score = 0.5
+        if user_profile.age < 30 and '年轻人' in tags:
+            tag_score = 0.9
+        elif user_profile.age >= 30 and user_profile.age < 50 and '家庭' in tags:
+            tag_score = 0.9
+        elif user_profile.age >= 50 and '养老' in tags:
+            tag_score = 0.9
+        
+        return [premium_norm, category_score, tag_score]
     
     def _build_user_preference_vector(self, user_profile):
         """构建用户偏好向量"""
@@ -343,28 +376,27 @@ class RecommendationEngine:
     
     def _build_insurance_vector(self, insurance):
         """构建保险产品向量"""
-        type_mapping = {
+        category_mapping = {
             '意外险': [1, 0, 0, 0, 0],
             '医疗险': [0, 1, 0, 0, 0],
             '寿险': [0, 0, 1, 0, 0],
             '重疾险': [0, 0, 0, 1, 0],
             '养老险': [0, 0, 0, 0, 1]
         }
-        return type_mapping.get(insurance.insurance_type, [0.2, 0.2, 0.2, 0.2, 0.2])
+        return category_mapping.get(insurance.category, [0.2, 0.2, 0.2, 0.2, 0.2])
     
     def _build_fund_features(self, fund):
         """构建基金特征向量"""
-        # 风险等级编码
-        risk_mapping = {'low': 0.2, 'medium': 0.5, 'high': 0.8}
-        risk_score = risk_mapping.get(fund.risk_level, 0.5)
-        
-        # 收益率归一化
-        return_norm = min(abs(float(fund.daily_change)) / 10.0, 1.0)
-        
-        # 基金类型编码
-        type_mapping = {
+        # 基金类型风险编码
+        type_risk_mapping = {
             '货币型': 0.1, '债券型': 0.3, '混合型': 0.6, '股票型': 0.8
         }
-        type_score = type_mapping.get(fund.fund_type, 0.5)
+        risk_score = type_risk_mapping.get(fund.fund_type, 0.5)
         
-        return [risk_score, return_norm, type_score]
+        # 星级归一化
+        star_norm = min(fund.star_count / 5.0, 1.0) if fund.star_count else 0.5
+        
+        # 手续费归一化
+        fee_norm = min(fund.fee / 3.0, 1.0) if fund.fee else 0.5
+        
+        return [risk_score, star_norm, fee_norm]

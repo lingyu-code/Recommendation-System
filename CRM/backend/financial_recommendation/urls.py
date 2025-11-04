@@ -10,16 +10,13 @@ class APIRootView(View):
             "endpoints": {
                 "admin": "/admin/",
                 "api_root": "/api/",
-                "user_profiles": "/api/user-profiles/",
-                "insurances": "/api/insurances/",
                 "funds": "/api/funds/",
+                "insurance": "/api/insurance/",
                 "stocks": "/api/stocks/",
-                "user_holdings": "/api/user-holdings/",
-                "click_history": "/api/click-history/",
-                "insurance_recommendations": "/api/insurance/recommended/?user_id=1",
-                "fund_recommendations": "/api/fund/recommended/?user_id=1",
-                "stock_recommendations": "/api/stock/recommended/?user_id=1",
-                "financial_diagnosis": "/api/financial-diagnosis/"
+                "stock_data": "/api/stock-data/",
+                "recommendations": "/api/recommendations/",
+                "dashboard": "/api/dashboard/",
+                "health_check": "/api/health/"
             },
             "frontend": "请启动前端开发服务器访问完整界面"
         }
