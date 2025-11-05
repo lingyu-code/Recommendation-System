@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
 
 router = DefaultRouter()
@@ -10,7 +11,11 @@ router.register(r'stock-data', views.StockDailyDataViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('recommendations/', views.get_recommendations, name='get_recommendations'),
-    path('dashboard/', views.get_dashboard_data, name='dashboard_data'),
-    path('health/', views.health_check, name='health_check'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/register/', views.user_register, name='user_register'),
+    path('auth/profile/', views.user_profile, name='user_profile'),
+    path('purchase/', views.purchase_product, name='purchase_product'),
+    path('purchase/records/', views.get_purchase_records, name='purchase_records'),
+    path('purchase/stock/', views.purchase_stock, name='purchase_stock'),
 ]

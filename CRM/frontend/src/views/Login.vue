@@ -6,41 +6,31 @@
         <el-form-item prop="username">
           <el-input v-model="loginForm.username" placeholder="用户名" size="large">
             <template #prefix>
-              <el-icon><User /></el-icon>
+              <el-icon>
+                <User />
+              </el-icon>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input 
-            v-model="loginForm.password" 
-            type="password" 
-            placeholder="密码" 
-            size="large"
-            show-password
-          >
+          <el-input v-model="loginForm.password" type="password" placeholder="密码" size="large" show-password>
             <template #prefix>
-              <el-icon><Lock /></el-icon>
+              <el-icon>
+                <Lock />
+              </el-icon>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item>
-          <el-button 
-            type="primary" 
-            style="width: 100%;" 
-            size="large"
-            @click="handleLogin"
-            :loading="loading"
-          >
+          <el-button type="primary" style="width: 100%;" size="large" @click="handleLogin" :loading="loading">
             登录
           </el-button>
         </el-form-item>
       </el-form>
-      
-      <div class="demo-accounts">
-        <h4>演示账户：</h4>
-        <p>用户名: demo1, 密码: 123456 (低风险偏好)</p>
-        <p>用户名: demo2, 密码: 123456 (中风险偏好)</p>
-        <p>用户名: demo3, 密码: 123456 (高风险偏好)</p>
+
+      <div class="register-link">
+        <span>没有账号？</span>
+        <el-link type="primary" @click="$router.push('/register')">立即注册</el-link>
       </div>
     </div>
   </div>
@@ -50,6 +40,7 @@
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { mapActions } from 'vuex'
+import { apiService } from '@/api'
 
 export default {
   name: 'Login',
@@ -81,38 +72,59 @@ export default {
         if (valid) {
           this.loading = true
           try {
-            // 模拟登录验证
-            const demoUsers = {
-              'demo1': { id: 1, name: '张三', risk: 'low' },
-              'demo2': { id: 2, name: '李四', risk: 'medium' },
-              'demo3': { id: 3, name: '王五', risk: 'high' }
-            }
-            
-            if (this.loginForm.password === '123456' && demoUsers[this.loginForm.username]) {
-              const user = demoUsers[this.loginForm.username]
-              
+            // 调用JWT登录API
+            const response = await apiService.login(this.loginForm)
+
+            // JWT返回access和refresh tokens
+            const { access, refresh } = response
+
+            // 存储tokens到localStorage
+            localStorage.setItem('access_token', access)
+            localStorage.setItem('refresh_token', refresh)
+
+            // 获取用户信息
+            const profileResponse = await apiService.getProfile()
+            if (profileResponse.success) {
+              const user = profileResponse.user
+
               // 使用Vuex store存储用户信息
               this.login({
-                name: user.name,
-                avatar: '',
-                risk: user.risk
+                id: user.id,
+                username: user.username,
+                name: user.first_name && user.last_name ? `${user.last_name}${user.first_name}` : user.username,
+                email: user.email,
+                phone: user.phone,
+                age: user.age,
+                risk_tolerance: user.risk_tolerance,
+                total_assets: user.total_assets,
+                investment_goal: user.investment_goal
               })
-              
+
               // 存储用户信息到localStorage（用于持久化）
               localStorage.setItem('isLoggedIn', 'true')
               localStorage.setItem('userId', user.id.toString())
-              localStorage.setItem('userName', user.name)
-              localStorage.setItem('userRisk', user.risk)
-              
+              localStorage.setItem('userName', user.username)
+              localStorage.setItem('userRisk', user.risk_tolerance)
+
               ElMessage.success('登录成功！')
-              
+
               // 跳转到仪表盘
               this.$router.push('/dashboard')
             } else {
-              ElMessage.error('用户名或密码错误')
+              ElMessage.error('获取用户信息失败')
             }
           } catch (error) {
-            ElMessage.error('登录失败，请稍后重试')
+            console.error('Login error:', error)
+            if (error.response && error.response.data) {
+              // JWT返回的错误格式
+              if (error.response.data.detail) {
+                ElMessage.error(error.response.data.detail)
+              } else {
+                ElMessage.error('用户名或密码错误')
+              }
+            } else {
+              ElMessage.error('登录失败，请稍后重试')
+            }
           } finally {
             this.loading = false
           }
@@ -163,5 +175,15 @@ export default {
   margin: 5px 0;
   font-size: 12px;
   color: #666;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  color: #666;
+}
+
+.register-link .el-link {
+  margin-left: 5px;
 }
 </style>

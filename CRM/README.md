@@ -55,8 +55,8 @@ npm run serve
 cd backend
 python manage.py import_stock_info --file=data/StockInfo.csv
 python manage.py import_stock_daily --file=data/StockDailyData.csv
-python manage.py import_insurance_products --file=data/InsuranceProducts.csv
-python manage.py import_funds --file=data/Fund.csv
+python manage.py import_insurance_products --file=data/InsuranceProduct.csv
+python manage.py import_fund --file=data/Fund.csv
 ```
 
 ## 数据说明

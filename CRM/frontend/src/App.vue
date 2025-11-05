@@ -3,31 +3,28 @@
     <el-container>
       <!-- 侧边栏导航 -->
       <el-aside width="200px" style="background-color: #304156; min-height: 100vh;">
-        <el-menu
-          default-active="1"
-          class="el-menu-vertical-demo"
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409EFF"
-          router
-        >
+        <el-menu default-active="1" class="el-menu-vertical-demo" background-color="#304156" text-color="#bfcbd9"
+          active-text-color="#409EFF" router>
           <div class="logo">
             <h2 style="color: white; text-align: center; padding: 20px 0;">金融推荐系统</h2>
           </div>
-          
+
           <el-sub-menu index="1">
             <template #title>
-              <el-icon><location /></el-icon>
+              <el-icon>
+                <location />
+              </el-icon>
               <span>投资中心</span>
             </template>
-            <el-menu-item index="/dashboard">投资仪表盘</el-menu-item>
             <el-menu-item index="/funds">基金推荐</el-menu-item>
             <el-menu-item index="/stocks">股票推荐</el-menu-item>
           </el-sub-menu>
 
           <el-sub-menu index="2">
             <template #title>
-              <el-icon><setting /></el-icon>
+              <el-icon>
+                <setting />
+              </el-icon>
               <span>理财规划</span>
             </template>
             <el-menu-item index="/financial-diagnosis">理财诊断</el-menu-item>
@@ -35,17 +32,23 @@
           </el-sub-menu>
 
           <el-menu-item index="/profile">
-            <el-icon><user /></el-icon>
+            <el-icon>
+              <user />
+            </el-icon>
             <span>个人中心</span>
           </el-menu-item>
 
           <el-menu-item index="/login" v-if="!isLoggedIn">
-            <el-icon><login /></el-icon>
+            <el-icon>
+              <login />
+            </el-icon>
             <span>登录</span>
           </el-menu-item>
 
           <el-menu-item index="/logout" v-if="isLoggedIn" @click="handleLogout">
-            <el-icon><logout /></el-icon>
+            <el-icon>
+              <logout />
+            </el-icon>
             <span>退出登录</span>
           </el-menu-item>
         </el-menu>
@@ -88,7 +91,6 @@ export default {
     ...mapState(['isLoggedIn', 'userName', 'userAvatar']),
     currentRouteName() {
       const routeNames = {
-        '/dashboard': '投资仪表盘',
         '/funds': '基金推荐',
         '/stocks': '股票推荐',
         '/financial-diagnosis': '理财诊断',
@@ -114,7 +116,7 @@ export default {
     // 检查localStorage中的登录状态
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
     const userName = localStorage.getItem('userName')
-    
+
     if (isLoggedIn && userName) {
       this.login({
         name: userName,

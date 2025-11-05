@@ -1,611 +1,689 @@
 <template>
-  <div class="profile">
-    <el-row :gutter="20">
-      <!-- 个人信息 -->
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <div class="header-content">
-              <span>个人信息</span>
-              <el-button type="primary" size="small" @click="editProfile">
-                编辑信息
-              </el-button>
-            </div>
-          </template>
+  <div class="profile-container">
+    <div class="profile-header">
+      <h1>个人信息</h1>
+      <p>管理您的个人资料和投资偏好</p>
+    </div>
 
-          <div class="user-info">
-            <div class="avatar-section">
-              <el-avatar :size="80" :src="userInfo.avatar" />
-              <div class="user-name">
-                <h3>{{ userInfo.name }}</h3>
-                <p>{{ userInfo.role }}</p>
-              </div>
-            </div>
-
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="用户ID">
-                {{ userInfo.id }}
-              </el-descriptions-item>
-              <el-descriptions-item label="年龄">
-                {{ userInfo.age }}岁
-              </el-descriptions-item>
-              <el-descriptions-item label="职业">
-                {{ userInfo.occupation }}
-              </el-descriptions-item>
-              <el-descriptions-item label="年收入">
-                ¥{{ userInfo.income.toLocaleString() }}
-              </el-descriptions-item>
-              <el-descriptions-item label="风险等级">
-                <el-tag :type="getRiskLevelTagType(userInfo.riskLevel)">
-                  {{ userInfo.riskLevel }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="注册时间">
-                {{ userInfo.registerTime }}
-              </el-descriptions-item>
-            </el-descriptions>
+    <div class="profile-content">
+      <!-- 查看模式 -->
+      <div v-if="!isEditing" class="profile-view">
+        <div class="profile-card">
+          <div class="card-header">
+            <h2>基本信息</h2>
+            <button @click="startEditing" class="edit-btn">
+              <i class="fas fa-edit"></i> 编辑
+            </button>
           </div>
-        </el-card>
 
-        <!-- 资产概览 -->
-        <el-card style="margin-top: 20px;">
-          <template #header>
-            <span>资产概览</span>
-          </template>
-          <div class="asset-overview">
-            <div class="asset-item">
-              <div class="asset-icon total">
-                <i class="el-icon-money"></i>
-              </div>
-              <div class="asset-info">
-                <div class="asset-value">¥{{ totalAssets.toLocaleString() }}</div>
-                <div class="asset-label">总资产</div>
-              </div>
+          <div class="profile-info">
+            <div class="info-row">
+              <label>用户名:</label>
+              <span>{{ user.username }}</span>
             </div>
-            <div class="asset-item">
-              <div class="asset-icon profit">
-                <i class="el-icon-trend-charts"></i>
-              </div>
-              <div class="asset-info">
-                <div class="asset-value">+{{ totalProfit.toLocaleString() }}</div>
-                <div class="asset-label">总收益</div>
-              </div>
+            <div class="info-row">
+              <label>邮箱:</label>
+              <span>{{ user.email || '未设置' }}</span>
             </div>
-            <div class="asset-item">
-              <div class="asset-icon rate">
-                <i class="el-icon-data-line"></i>
-              </div>
-              <div class="asset-info">
-                <div class="asset-value">{{ profitRate }}%</div>
-                <div class="asset-label">收益率</div>
-              </div>
+            <div class="info-row">
+              <label>姓名:</label>
+              <span>{{ fullName || '未设置' }}</span>
+            </div>
+            <div class="info-row">
+              <label>电话:</label>
+              <span>{{ user.phone || '未设置' }}</span>
+            </div>
+            <div class="info-row">
+              <label>年龄:</label>
+              <span>{{ user.age || '未设置' }}</span>
             </div>
           </div>
-        </el-card>
-      </el-col>
+        </div>
 
-      <!-- 投资组合 -->
-      <el-col :span="16">
-        <el-card>
-          <template #header>
-            <span>投资组合</span>
-          </template>
-          <div class="portfolio">
-            <el-table :data="portfolio" style="width: 100%">
-              <el-table-column prop="type" label="类型" width="100">
-                <template #default="scope">
-                  <el-tag :type="getProductTypeTagType(scope.row.type)">
-                    {{ scope.row.type }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="name" label="产品名称" width="200"></el-table-column>
-              <el-table-column prop="amount" label="投资金额" width="120">
-                <template #default="scope">
-                  ¥{{ scope.row.amount.toLocaleString() }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="currentValue" label="当前价值" width="120">
-                <template #default="scope">
-                  ¥{{ scope.row.currentValue.toLocaleString() }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="profit" label="收益" width="100">
-                <template #default="scope">
-                  <span :class="scope.row.profit >= 0 ? 'profit-positive' : 'profit-negative'">
-                    {{ scope.row.profit >= 0 ? '+' : '' }}{{ scope.row.profit.toLocaleString() }}
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="profitRate" label="收益率" width="100">
-                <template #default="scope">
-                  <span :class="scope.row.profitRate >= 0 ? 'profit-positive' : 'profit-negative'">
-                    {{ scope.row.profitRate >= 0 ? '+' : '' }}{{ scope.row.profitRate }}%
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="purchaseDate" label="购买日期" width="120"></el-table-column>
-              <el-table-column label="操作" width="120">
-                <template #default="scope">
-                  <el-button type="text" @click="viewProductDetail(scope.row)">详情</el-button>
-                  <el-button type="text" @click="sellProduct(scope.row)">卖出</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+        <div class="profile-card">
+          <div class="card-header">
+            <h2>投资偏好</h2>
           </div>
-        </el-card>
 
-        <!-- 投资历史 -->
-        <el-card style="margin-top: 20px;">
-          <template #header>
-            <span>投资历史</span>
-          </template>
-          <div class="investment-history">
-            <el-timeline>
-              <el-timeline-item
-                v-for="(record, index) in investmentHistory"
-                :key="index"
-                :timestamp="record.time"
-                :type="record.type"
-              >
-                <div class="history-item">
-                  <div class="history-content">
-                    <span class="action">{{ record.action }}</span>
-                    <span class="product">{{ record.product }}</span>
-                    <span class="amount">¥{{ record.amount.toLocaleString() }}</span>
-                  </div>
-                  <div class="history-detail">
-                    {{ record.detail }}
-                  </div>
+          <div class="profile-info">
+            <div class="info-row">
+              <label>风险承受能力:</label>
+              <span class="risk-badge" :class="getRiskClass(user.risk_tolerance)">
+                {{ getRiskDisplay(user.risk_tolerance) }}
+              </span>
+            </div>
+            <div class="info-row">
+              <label>总资产:</label>
+              <span class="amount">¥{{ formatAmount(user.total_assets) }}</span>
+            </div>
+            <div class="info-row">
+              <label>投资目标:</label>
+              <span>{{ user.investment_goal || '未设置' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 购买记录 -->
+        <div class="profile-card">
+          <div class="card-header">
+            <h2>购买记录</h2>
+            <button @click="loadPurchaseRecords" class="refresh-btn">
+              <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+          </div>
+
+          <div v-if="purchasesLoading" class="loading">
+            加载中...
+          </div>
+
+          <div v-else-if="purchases.length === 0" class="empty-state">
+            <p>暂无购买记录</p>
+            <p class="hint">您可以在基金、保险或股票页面进行购买</p>
+          </div>
+
+          <div v-else class="purchases-list">
+            <div v-for="purchase in purchases" :key="purchase.id" class="purchase-item">
+              <div class="purchase-header">
+                <span class="product-name">{{ purchase.product_name }}</span>
+                <span class="purchase-type" :class="getPurchaseTypeClass(purchase.purchase_type)">
+                  {{ purchase.purchase_type_display }}
+                </span>
+              </div>
+              <div class="purchase-details">
+                <div class="purchase-amount">
+                  <span class="amount-label">金额:</span>
+                  <span class="amount-value">¥{{ formatAmount(purchase.amount) }}</span>
                 </div>
-              </el-timeline-item>
-            </el-timeline>
+                <div v-if="purchase.quantity" class="purchase-quantity">
+                  <span class="quantity-label">数量:</span>
+                  <span class="quantity-value">{{ purchase.quantity }}</span>
+                </div>
+                <div class="purchase-date">
+                  <span class="date-label">购买时间:</span>
+                  <span class="date-value">{{ formatDate(purchase.purchase_date) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </el-card>
+        </div>
+      </div>
 
-        <!-- 推荐记录 -->
-        <el-card style="margin-top: 20px;">
-          <template #header>
-            <span>推荐记录</span>
-          </template>
-          <div class="recommendation-history">
-            <el-table :data="recommendationHistory" style="width: 100%">
-              <el-table-column prop="date" label="日期" width="120"></el-table-column>
-              <el-table-column prop="type" label="类型" width="100">
-                <template #default="scope">
-                  <el-tag :type="getProductTypeTagType(scope.row.type)" size="small">
-                    {{ scope.row.type }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="product" label="产品名称" width="200"></el-table-column>
-              <el-table-column prop="score" label="推荐分数" width="100">
-                <template #default="scope">
-                  <el-rate
-                    :model-value="scope.row.score"
-                    disabled
-                    show-score
-                    text-color="#ff9900"
-                    score-template="{value}"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态" width="100">
-                <template #default="scope">
-                  <el-tag :type="getStatusTagType(scope.row.status)" size="small">
-                    {{ scope.row.status }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="120">
-                <template #default="scope">
-                  <el-button type="text" @click="viewRecommendation(scope.row)">查看</el-button>
-                  <el-button 
-                    type="text" 
-                    @click="purchaseRecommendation(scope.row)"
-                    v-if="scope.row.status === '未购买'"
-                  >
-                    购买
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+      <!-- 编辑模式 -->
+      <div v-else class="profile-edit">
+        <div class="profile-card">
+          <div class="card-header">
+            <h2>编辑个人信息</h2>
+            <div class="action-buttons">
+              <button @click="saveProfile" class="save-btn" :disabled="loading">
+                {{ loading ? '保存中...' : '保存' }}
+              </button>
+              <button @click="cancelEditing" class="cancel-btn">取消</button>
+            </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
 
-    <!-- 编辑个人信息对话框 -->
-    <el-dialog v-model="editDialogVisible" title="编辑个人信息" width="500px">
-      <el-form :model="editForm" label-width="100px">
-        <el-form-item label="姓名">
-          <el-input v-model="editForm.name" />
-        </el-form-item>
-        <el-form-item label="年龄">
-          <el-input-number v-model="editForm.age" :min="18" :max="80" />
-        </el-form-item>
-        <el-form-item label="职业">
-          <el-select v-model="editForm.occupation" placeholder="请选择职业">
-            <el-option label="学生" value="学生"></el-option>
-            <el-option label="上班族" value="上班族"></el-option>
-            <el-option label="自由职业" value="自由职业"></el-option>
-            <el-option label="退休" value="退休"></el-option>
-            <el-option label="其他" value="其他"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="年收入">
-          <el-input-number v-model="editForm.income" :min="0" :step="10000" />
-          <span style="margin-left: 10px">元</span>
-        </el-form-item>
-        <el-form-item label="风险等级">
-          <el-radio-group v-model="editForm.riskLevel">
-            <el-radio label="保守型">保守型</el-radio>
-            <el-radio label="稳健型">稳健型</el-radio>
-            <el-radio label="积极型">积极型</el-radio>
-            <el-radio label="非常积极型">非常积极型</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveProfile">保存</el-button>
-      </template>
-    </el-dialog>
+          <form @submit.prevent="saveProfile" class="profile-form">
+            <div class="form-group">
+              <label>邮箱:</label>
+              <input v-model="editForm.email" type="email" placeholder="请输入邮箱">
+            </div>
+
+            <div class="form-group">
+              <label>姓:</label>
+              <input v-model="editForm.first_name" type="text" placeholder="请输入姓">
+            </div>
+
+            <div class="form-group">
+              <label>名:</label>
+              <input v-model="editForm.last_name" type="text" placeholder="请输入名">
+            </div>
+
+            <div class="form-group">
+              <label>电话:</label>
+              <input v-model="editForm.phone" type="tel" placeholder="请输入电话号码">
+            </div>
+
+            <div class="form-group">
+              <label>年龄:</label>
+              <input v-model="editForm.age" type="number" min="18" max="100" placeholder="请输入年龄">
+            </div>
+
+            <div class="form-group">
+              <label>风险承受能力:</label>
+              <select v-model="editForm.risk_tolerance">
+                <option value="low">低风险</option>
+                <option value="medium">中风险</option>
+                <option value="high">高风险</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>总资产 (元):</label>
+              <input v-model="editForm.total_assets" type="number" min="0" step="1000" placeholder="请输入总资产">
+            </div>
+
+            <div class="form-group">
+              <label>投资目标:</label>
+              <textarea v-model="editForm.investment_goal" placeholder="请输入您的投资目标，例如：长期增值、短期收益、教育基金等"
+                rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div v-if="message" class="message" :class="messageType">
+      {{ message }}
+    </div>
   </div>
 </template>
 
 <script>
+import { apiService } from '@/api'
+
 export default {
   name: 'Profile',
   data() {
     return {
-      userInfo: {
-        id: 'U10001',
-        name: '张三',
-        role: '普通用户',
-        avatar: '',
-        age: 35,
-        occupation: '上班族',
-        income: 200000,
-        riskLevel: '稳健型',
-        registerTime: '2024-01-15'
+      user: {
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        phone: '',
+        age: null,
+        risk_tolerance: 'medium',
+        total_assets: 100000,
+        investment_goal: ''
       },
-      totalAssets: 285000,
-      totalProfit: 18500,
-      profitRate: 6.95,
-      portfolio: [
-        {
-          id: 1,
-          type: '基金',
-          name: '华夏成长混合基金',
-          amount: 50000,
-          currentValue: 53500,
-          profit: 3500,
-          profitRate: 7.0,
-          purchaseDate: '2024-03-10'
-        },
-        {
-          id: 2,
-          type: '股票',
-          name: '贵州茅台',
-          amount: 80000,
-          currentValue: 92000,
-          profit: 12000,
-          profitRate: 15.0,
-          purchaseDate: '2024-02-15'
-        },
-        {
-          id: 3,
-          type: '保险',
-          name: '平安福终身寿险',
-          amount: 150000,
-          currentValue: 150000,
-          profit: 0,
-          profitRate: 0,
-          purchaseDate: '2024-01-20'
-        },
-        {
-          id: 4,
-          type: '理财产品',
-          name: '保本型理财',
-          amount: 5000,
-          currentValue: 5100,
-          profit: 100,
-          profitRate: 2.0,
-          purchaseDate: '2024-04-05'
-        }
-      ],
-      investmentHistory: [
-        {
-          time: '2024-04-05 14:30',
-          type: 'success',
-          action: '购买',
-          product: '保本型理财',
-          amount: 5000,
-          detail: '购买保本型理财产品，预期年化收益率3.5%'
-        },
-        {
-          time: '2024-03-10 10:15',
-          type: 'success',
-          action: '购买',
-          product: '华夏成长混合基金',
-          amount: 50000,
-          detail: '购买混合型基金，追求长期稳定增长'
-        },
-        {
-          time: '2024-02-15 09:45',
-          type: 'success',
-          action: '购买',
-          product: '贵州茅台股票',
-          amount: 80000,
-          detail: '购买优质蓝筹股，看好长期价值'
-        },
-        {
-          time: '2024-01-20 16:20',
-          type: 'info',
-          action: '购买',
-          product: '平安福终身寿险',
-          amount: 150000,
-          detail: '购买终身寿险，提供家庭保障'
-        }
-      ],
-      recommendationHistory: [
-        {
-          id: 1,
-          date: '2024-04-10',
-          type: '基金',
-          product: '易方达消费行业股票',
-          score: 4.2,
-          status: '未购买'
-        },
-        {
-          id: 2,
-          date: '2024-04-08',
-          type: '股票',
-          product: '招商银行',
-          score: 4.0,
-          status: '已购买'
-        },
-        {
-          id: 3,
-          date: '2024-04-05',
-          type: '保险',
-          product: '意外伤害保险',
-          score: 3.8,
-          status: '未购买'
-        },
-        {
-          id: 4,
-          date: '2024-04-01',
-          type: '理财产品',
-          product: '货币市场基金',
-          score: 4.5,
-          status: '已购买'
-        }
-      ],
-      editDialogVisible: false,
       editForm: {
-        name: '',
-        age: 0,
-        occupation: '',
-        income: 0,
-        riskLevel: ''
-      }
+        email: '',
+        first_name: '',
+        last_name: '',
+        phone: '',
+        age: null,
+        risk_tolerance: 'medium',
+        total_assets: 100000,
+        investment_goal: ''
+      },
+      purchases: [],
+      purchasesLoading: false,
+      isEditing: false,
+      loading: false,
+      message: '',
+      messageType: 'success'
     }
   },
-  mounted() {
-    this.loadUserData()
+  computed: {
+    fullName() {
+      if (this.user.first_name && this.user.last_name) {
+        return `${this.user.last_name}${this.user.first_name}`
+      }
+      return ''
+    }
+  },
+  async mounted() {
+    await this.loadUserProfile()
+    await this.loadPurchaseRecords()
   },
   methods: {
-    loadUserData() {
-      // 模拟加载用户数据
-      console.log('加载用户数据')
-    },
-    
-    editProfile() {
-      this.editForm = { ...this.userInfo }
-      this.editDialogVisible = true
-    },
-    
-    saveProfile() {
-      this.userInfo = { ...this.editForm }
-      this.$message.success('个人信息更新成功')
-      this.editDialogVisible = false
-    },
-    
-    getRiskLevelTagType(level) {
-      const typeMap = {
-        '保守型': 'info',
-        '稳健型': 'success',
-        '积极型': 'warning',
-        '非常积极型': 'danger'
+    async loadUserProfile() {
+      try {
+        const response = await apiService.getProfile()
+        if (response.success) {
+          this.user = response.user
+          // 初始化编辑表单
+          Object.assign(this.editForm, response.user)
+        }
+      } catch (error) {
+        console.error('加载用户信息失败:', error)
+        this.showMessage('加载用户信息失败', 'error')
       }
-      return typeMap[level] || 'info'
     },
-    
-    getProductTypeTagType(type) {
-      const typeMap = {
-        '基金': 'primary',
-        '股票': 'success',
-        '保险': 'warning',
-        '理财产品': 'info'
+
+    async loadPurchaseRecords() {
+      this.purchasesLoading = true
+      try {
+        const response = await apiService.getPurchaseRecords()
+        if (response.success) {
+          this.purchases = response.purchases
+        }
+      } catch (error) {
+        console.error('加载购买记录失败:', error)
+        this.showMessage('加载购买记录失败', 'error')
+      } finally {
+        this.purchasesLoading = false
       }
-      return typeMap[type] || 'info'
     },
-    
-    getStatusTagType(status) {
-      const typeMap = {
-        '已购买': 'success',
-        '未购买': 'info'
+
+    startEditing() {
+      this.isEditing = true
+      this.message = ''
+    },
+
+    cancelEditing() {
+      this.isEditing = false
+      // 重置编辑表单为当前用户数据
+      Object.assign(this.editForm, this.user)
+      this.message = ''
+    },
+
+    async saveProfile() {
+      this.loading = true
+      try {
+        const response = await apiService.updateProfile(this.editForm)
+        if (response.success) {
+          this.user = response.user
+          this.isEditing = false
+          this.showMessage('个人信息更新成功', 'success')
+        } else {
+          this.showMessage(response.message || '更新失败', 'error')
+        }
+      } catch (error) {
+        console.error('更新用户信息失败:', error)
+        this.showMessage('更新失败，请稍后重试', 'error')
+      } finally {
+        this.loading = false
       }
-      return typeMap[status] || 'info'
     },
-    
-    viewProductDetail(product) {
-      this.$message.info(`查看${product.name}详情`)
+
+    getRiskDisplay(risk) {
+      const riskMap = {
+        'low': '低风险',
+        'medium': '中风险',
+        'high': '高风险'
+      }
+      return riskMap[risk] || '未知'
     },
-    
-    sellProduct(product) {
-      this.$confirm(`确定要卖出${product.name}吗？`, '确认卖出', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.$message.success(`成功卖出${product.name}`)
+
+    getRiskClass(risk) {
+      return `risk-${risk}`
+    },
+
+    getPurchaseTypeClass(type) {
+      return `purchase-${type}`
+    },
+
+    formatAmount(amount) {
+      if (!amount) return '0.00'
+      return parseFloat(amount).toLocaleString('zh-CN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
       })
     },
-    
-    viewRecommendation(recommendation) {
-      this.$message.info(`查看${recommendation.product}推荐详情`)
-    },
-    
-    purchaseRecommendation(recommendation) {
-      this.$confirm(`确定要购买${recommendation.product}吗？`, '确认购买', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
-        recommendation.status = '已购买'
-        this.$message.success(`成功购买${recommendation.product}`)
+
+    formatDate(dateString) {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
       })
+    },
+
+    showMessage(msg, type = 'success') {
+      this.message = msg
+      this.messageType = type
+      setTimeout(() => {
+        this.message = ''
+      }, 3000)
     }
   }
 }
 </script>
 
 <style scoped>
-.profile {
+.profile-container {
+  max-width: 800px;
+  margin: 0 auto;
   padding: 20px;
 }
 
-.header-content {
+.profile-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.profile-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.profile-header p {
+  color: #666;
+  font-size: 16px;
+}
+
+.profile-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
-
-.user-info {
-  padding: 10px 0;
-}
-
-.avatar-section {
-  display: flex;
   align-items: center;
   margin-bottom: 20px;
-  padding: 0 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
 }
 
-.user-name {
-  margin-left: 15px;
-}
-
-.user-name h3 {
-  margin: 0 0 5px 0;
-  color: #303133;
-}
-
-.user-name p {
+.card-header h2 {
+  color: #333;
   margin: 0;
-  color: #909399;
+}
+
+.edit-btn,
+.save-btn,
+.cancel-btn,
+.refresh-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 14px;
+  transition: all 0.3s;
 }
 
-.asset-overview {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-}
-
-.asset-item {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  text-align: center;
-}
-
-.asset-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  font-size: 24px;
+.edit-btn {
+  background: #007bff;
   color: white;
 }
 
-.asset-icon.total {
-  background-color: #409EFF;
+.edit-btn:hover {
+  background: #0056b3;
 }
 
-.asset-icon.profit {
-  background-color: #67C23A;
+.save-btn {
+  background: #28a745;
+  color: white;
+  margin-right: 10px;
 }
 
-.asset-icon.rate {
-  background-color: #E6A23C;
+.save-btn:hover:not(:disabled) {
+  background: #218838;
 }
 
-.asset-value {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
+.save-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
-.asset-label {
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #545b62;
+}
+
+.refresh-btn {
+  background: #17a2b8;
+  color: white;
+}
+
+.refresh-btn:hover {
+  background: #138496;
+}
+
+.profile-info {
+  display: grid;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.info-row label {
+  font-weight: 600;
+  color: #333;
+  min-width: 120px;
+  margin-right: 20px;
+}
+
+.info-row span {
+  color: #666;
+}
+
+.risk-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.risk-low {
+  background: #d4edda;
+  color: #155724;
+}
+
+.risk-medium {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.risk-high {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.amount {
+  font-weight: 600;
+  color: #28a745;
+}
+
+/* 购买记录样式 */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.empty-state .hint {
   font-size: 14px;
-  color: #909399;
+  color: #999;
+  margin-top: 10px;
 }
 
-.portfolio {
-  padding: 10px 0;
+.purchases-list {
+  display: grid;
+  gap: 16px;
 }
 
-.profit-positive {
-  color: #67C23A;
-  font-weight: bold;
+.purchase-item {
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 16px;
+  background: #f8f9fa;
 }
 
-.profit-negative {
-  color: #F56C6C;
-  font-weight: bold;
-}
-
-.investment-history {
-  padding: 10px 0;
-}
-
-.history-item {
-  padding: 5px 0;
-}
-
-.history-content {
+.purchase-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 5px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.history-content .action {
-  font-weight: bold;
-  color: #303133;
+.product-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
 }
 
-.history-content .product {
-  color: #409EFF;
+.purchase-type {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.history-content .amount {
-  color: #67C23A;
-  font-weight: bold;
+.purchase-fund {
+  background: #e3f2fd;
+  color: #1565c0;
 }
 
-.history-detail {
-  color: #606266;
+.purchase-insurance {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.purchase-stock {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.purchase-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
   font-size: 14px;
 }
 
-.recommendation-history {
-  padding: 10px 0;
+.purchase-amount,
+.purchase-quantity,
+.purchase-date {
+  display: flex;
+  flex-direction: column;
+}
+
+.amount-label,
+.quantity-label,
+.date-label {
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.amount-value {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.quantity-value,
+.date-value {
+  color: #333;
+}
+
+.profile-form {
+  display: grid;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  color: white;
+  font-weight: 500;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+}
+
+.message.success {
+  background: #28a745;
+}
+
+.message.error {
+  background: #dc3545;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 10px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .action-buttons {
+    align-self: flex-end;
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .info-row label {
+    min-width: auto;
+  }
+
+  .purchase-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .purchase-details {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

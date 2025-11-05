@@ -9,11 +9,10 @@ const api = axios.create({
     }
 })
 
-// 请求拦截器
+// 请求拦截器 - 添加JWT token
 api.interceptors.request.use(
     (config) => {
-        // 可以在这里添加token等认证信息
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem('access_token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
@@ -37,15 +36,6 @@ api.interceptors.response.use(
 
 // API接口定义 - 更新为匹配后端实际URLs
 export const apiService = {
-    // 仪表板数据
-    getDashboardData() {
-        return api.get('/dashboard/')
-    },
-
-    // 获取推荐
-    getRecommendations(userData) {
-        return api.post('/recommendations/', userData)
-    },
 
     // 基金相关
     getFunds(params = {}) {
@@ -67,10 +57,41 @@ export const apiService = {
         return api.get('/stock-data/')
     },
 
-    // 健康检查
-    healthCheck() {
-        return api.get('/health/')
-    }
+    // 认证相关 - JWT
+    login(credentials) {
+        return api.post('/auth/token/', credentials)
+    },
+
+    refreshToken() {
+        const refreshToken = localStorage.getItem('refresh_token')
+        return api.post('/auth/token/refresh/', { refresh: refreshToken })
+    },
+
+    register(userData) {
+        return api.post('/auth/register/', userData)
+    },
+
+    // 用户资料相关
+    getProfile() {
+        return api.get('/auth/profile/')
+    },
+
+    updateProfile(userData) {
+        return api.put('/auth/profile/', userData)
+    },
+
+    // 购买相关
+    purchaseProduct(purchaseData) {
+        return api.post('/purchase/', purchaseData)
+    },
+
+    purchaseStock(purchaseData) {
+        return api.post('/purchase/stock/', purchaseData)
+    },
+
+    getPurchaseRecords() {
+        return api.get('/purchase/records/')
+    },
 }
 
 export default api

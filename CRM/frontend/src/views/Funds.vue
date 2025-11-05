@@ -5,22 +5,7 @@
         <div class="header-content">
           <span class="title">基金推荐</span>
           <div class="filter-section">
-            <select v-model="filterRisk" class="select">
-              <option value="">风险等级</option>
-              <option value="low">低风险</option>
-              <option value="medium">中风险</option>
-              <option value="high">高风险</option>
-            </select>
 
-            <select v-model="filterType" class="select">
-              <option value="">基金类型</option>
-              <option value="股票型">股票型</option>
-              <option value="混合型">混合型</option>
-              <option value="债券型">债券型</option>
-              <option value="货币型">货币型</option>
-            </select>
-
-            <button class="btn btn-primary" @click="loadFunds">筛选</button>
           </div>
         </div>
       </div>
@@ -36,7 +21,6 @@
               <th>预期收益</th>
               <th>管理费</th>
               <th>最低投资</th>
-              <th>推荐指数</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -58,22 +42,11 @@
               <td>{{ (fund.management_fee * 100).toFixed(2) }}%</td>
               <td>¥{{ fund.min_investment.toLocaleString() }}</td>
               <td>
-                <div class="rating">
-                  <span class="stars">
-                    <span v-for="n in 5" :key="n" class="star"
-                      :class="{ active: n <= Math.floor(fund.recommendation_score) }">
-                      ★
-                    </span>
-                  </span>
-                  <span class="score">{{ fund.recommendation_score }}分</span>
-                </div>
-              </td>
-              <td>
                 <button class="btn btn-sm btn-primary" @click="viewFundDetail(fund)">
                   查看详情
                 </button>
-                <button class="btn btn-sm btn-success" @click="simulateInvestment(fund)">
-                  模拟投资
+                <button class="btn btn-sm btn-success" @click="purchaseFund(fund)">
+                  购买基金
                 </button>
               </td>
             </tr>
@@ -88,12 +61,6 @@
           共 {{ totalFunds }} 条记录
         </div>
         <div class="pagination-controls">
-          <select v-model="pageSize" @change="handleSizeChange" class="select-sm">
-            <option value="10">10条/页</option>
-            <option value="20">20条/页</option>
-            <option value="50">50条/页</option>
-            <option value="100">100条/页</option>
-          </select>
 
           <button class="btn btn-sm" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
             上一页
@@ -183,11 +150,11 @@
       </div>
     </div>
 
-    <!-- 模拟投资对话框 -->
+    <!-- 购买基金对话框 -->
     <div v-if="investmentDialogVisible" class="modal-overlay" @click="investmentDialogVisible = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>模拟投资</h3>
+          <h3>购买基金</h3>
           <button class="close-btn" @click="investmentDialogVisible = false">×</button>
         </div>
         <div class="modal-body" v-if="selectedFund">
@@ -353,15 +320,33 @@ export default {
         .slice(0, 3)
     },
 
-    simulateInvestment(fund) {
+    async purchaseFund(fund) {
       this.selectedFund = fund
       this.investmentForm.amount = fund.min_investment
       this.investmentDialogVisible = true
     },
 
-    confirmInvestment() {
-      alert(`成功投资 ¥${this.investmentForm.amount.toLocaleString()} 到 ${this.selectedFund.name}`)
-      this.investmentDialogVisible = false
+    async confirmInvestment() {
+      try {
+        const purchaseData = {
+          product_type: 'fund',
+          product_id: this.selectedFund.id,
+          amount: this.investmentForm.amount,
+          quantity: this.investmentForm.amount / 1.0 // 基金份额计算
+        }
+
+        const response = await apiService.purchaseProduct(purchaseData)
+
+        if (response.success) {
+          alert(`成功购买基金 ¥${this.investmentForm.amount.toLocaleString()} 到 ${this.selectedFund.name}`)
+          this.investmentDialogVisible = false
+        } else {
+          alert(`购买失败: ${response.message}`)
+        }
+      } catch (error) {
+        console.error('购买基金失败:', error)
+        alert('购买失败，请稍后重试')
+      }
     },
 
     async handleSizeChange() {

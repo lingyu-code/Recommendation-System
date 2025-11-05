@@ -2,11 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Fund, InsuranceProduct, StockInfo, StockDailyData
+from rest_framework.permissions import IsAuthenticated
+from django.db import models
+from .models import Fund, InsuranceProduct, StockInfo, StockDailyData, User, PurchaseRecord
 from .serializers import (
     FundSerializer, InsuranceProductSerializer, 
     StockInfoSerializer, StockDailyDataSerializer,
-    RecommendationRequestSerializer, UserProfileSerializer
+    UserSerializer, RegisterSerializer, PurchaseRecordSerializer, 
+    PurchaseRequestSerializer, StockPurchaseRequestSerializer
 )
 from .recommendation_algorithms import RecommendationEngine
 
@@ -14,175 +17,230 @@ class FundViewSet(viewsets.ModelViewSet):
     queryset = Fund.objects.all()
     serializer_class = FundSerializer
     
-    @action(detail=False, methods=['get'])
-    def search(self, request):
-        """搜索基金"""
-        query = request.query_params.get('q', '')
-        if query:
-            funds = Fund.objects.filter(name__icontains=query) | Fund.objects.filter(code__icontains=query)
-            serializer = self.get_serializer(funds, many=True)
-            return Response(serializer.data)
-        return Response([])
-    
-    @action(detail=False, methods=['get'])
-    def top_performers(self, request):
-        """获取表现最好的基金"""
-        funds = Fund.objects.all().order_by('-star_count')[:10]
-        serializer = self.get_serializer(funds, many=True)
-        return Response(serializer.data)
 
 class InsuranceProductViewSet(viewsets.ModelViewSet):
     queryset = InsuranceProduct.objects.all()
     serializer_class = InsuranceProductSerializer
     
-    @action(detail=False, methods=['get'])
-    def by_category(self, request):
-        """按类别获取保险产品"""
-        category = request.query_params.get('category', '')
-        if category:
-            products = InsuranceProduct.objects.filter(category=category)
-            serializer = self.get_serializer(products, many=True)
-            return Response(serializer.data)
-        return Response([])
-    
-    @action(detail=False, methods=['get'])
-    def search(self, request):
-        """搜索保险产品"""
-        query = request.query_params.get('q', '')
-        if query:
-            products = InsuranceProduct.objects.filter(name__icontains=query) | InsuranceProduct.objects.filter(tags__icontains=query)
-            serializer = self.get_serializer(products, many=True)
-            return Response(serializer.data)
-        return Response([])
 
 class StockInfoViewSet(viewsets.ModelViewSet):
     queryset = StockInfo.objects.all()
     serializer_class = StockInfoSerializer
     
-    @action(detail=False, methods=['get'])
-    def by_industry(self, request):
-        """按行业获取股票"""
-        industry = request.query_params.get('industry', '')
-        if industry:
-            stocks = StockInfo.objects.filter(industry=industry)
-            serializer = self.get_serializer(stocks, many=True)
-            return Response(serializer.data)
-        return Response([])
-    
-    @action(detail=False, methods=['get'])
-    def search(self, request):
-        """搜索股票"""
-        query = request.query_params.get('q', '')
-        if query:
-            stocks = StockInfo.objects.filter(name__icontains=query) | StockInfo.objects.filter(symbol__icontains=query)
-            serializer = self.get_serializer(stocks, many=True)
-            return Response(serializer.data)
-        return Response([])
 
 class StockDailyDataViewSet(viewsets.ModelViewSet):
     queryset = StockDailyData.objects.all()
     serializer_class = StockDailyDataSerializer
-    
-    @action(detail=False, methods=['get'])
-    def by_stock(self, request):
-        """获取特定股票的日线数据"""
-        ts_code = request.query_params.get('ts_code', '')
-        if ts_code:
-            data = StockDailyData.objects.filter(ts_code=ts_code).order_by('-trade_date')[:30]
-            serializer = self.get_serializer(data, many=True)
-            return Response(serializer.data)
-        return Response([])
+
 
 @api_view(['POST'])
-def get_recommendations(request):
-    """获取个性化推荐"""
-    serializer = RecommendationRequestSerializer(data=request.data)
+def user_register(request):
+    """用户注册"""
+    serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
-        data = serializer.validated_data
+        user = serializer.save()
         
-        # 创建推荐引擎
-        engine = RecommendationEngine()
-        
-        # 创建用户档案对象（模拟）
-        class UserProfile:
-            def __init__(self, data):
-                self.age = data.get('age', 30)
-                self.risk_tolerance = data.get('risk_tolerance', 'medium')
-                self.total_assets = data.get('total_assets', 100000)
-                self.investment_goal = data.get('investment_goal', '')
-                self.user = None
-        
-        user_profile = UserProfile(data)
-        limit = data.get('limit', 5)
-        
-        # 获取各类推荐
-        try:
-            fund_recommendations = engine.fund_recommendation(user_profile, limit=limit)
-            insurance_recommendations = engine.insurance_recommendation(user_profile, limit=limit)
-            stock_recommendations = engine.stock_recommendation(user_profile, limit=limit)
-            
-            response_data = {
-                'funds': fund_recommendations,
-                'insurance': insurance_recommendations,
-                'stocks': stock_recommendations,
-                'user_profile': {
-                    'age': user_profile.age,
-                    'risk_tolerance': user_profile.risk_tolerance,
-                    'total_assets': user_profile.total_assets,
-                    'investment_goal': user_profile.investment_goal
-                }
-            }
-            
-            return Response(response_data)
-            
-        except Exception as e:
-            return Response(
-                {'error': f'推荐算法执行错误: {str(e)}'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        user_serializer = UserSerializer(user)
+        return Response({
+            'success': True,
+            'message': '注册成功',
+            'user': user_serializer.data
+        }, status=status.HTTP_201_CREATED)
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'success': False,
+        'message': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def get_dashboard_data(request):
-    """获取仪表板数据"""
+@api_view(['POST'])
+def purchase_product(request):
+    """购买产品（基金、保险、股票）"""
+    if not request.user.is_authenticated:
+        return Response({
+            'success': False,
+            'message': '用户未登录'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    serializer = PurchaseRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'message': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    data = serializer.validated_data
+    product_type = data['product_type']
+    product_id = data['product_id']
+    amount = data['amount']
+    quantity = data.get('quantity')
+    
+    # 获取产品信息
+    product_name = ""
     try:
-        # 统计数据
-        total_funds = Fund.objects.count()
-        total_insurance = InsuranceProduct.objects.count()
-        total_stocks = StockInfo.objects.count()
-        
-        # 热门基金（按星级）
-        popular_funds = Fund.objects.all().order_by('-star_count')[:5]
-        fund_serializer = FundSerializer(popular_funds, many=True)
-        
-        # 热门股票（按行业分布）
-        trending_stocks = StockInfo.objects.all()[:5]
-        stock_serializer = StockInfoSerializer(trending_stocks, many=True)
-        
-        # 保险类别统计
-        insurance_categories = InsuranceProduct.objects.values('category').distinct()
-        
-        dashboard_data = {
-            'stats': {
-                'total_funds': total_funds,
-                'total_insurance': total_insurance,
-                'total_stocks': total_stocks
-            },
-            'popular_funds': fund_serializer.data,
-            'trending_stocks': stock_serializer.data,
-            'insurance_categories': [cat['category'] for cat in insurance_categories]
-        }
-        
-        return Response(dashboard_data)
-        
+        if product_type == 'fund':
+            product = get_object_or_404(Fund, id=product_id)
+            product_name = f"{product.name} ({product.code})"
+        elif product_type == 'insurance':
+            product = get_object_or_404(InsuranceProduct, id=product_id)
+            product_name = product.name
+        elif product_type == 'stock':
+            product = get_object_or_404(StockInfo, id=product_id)
+            product_name = f"{product.name} ({product.symbol})"
     except Exception as e:
-        return Response(
-            {'error': f'获取仪表板数据错误: {str(e)}'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({
+            'success': False,
+            'message': '产品不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # 创建购买记录
+    purchase_record = PurchaseRecord.objects.create(
+        user=request.user,
+        purchase_type=product_type,
+        product_id=product_id,
+        product_name=product_name,
+        amount=amount,
+        quantity=quantity,
+        status='completed'
+    )
+    
+    # 更新用户总资产（这里简单处理，实际应该更复杂的逻辑）
+    # request.user.total_assets -= amount
+    # request.user.save()
+    
+    purchase_serializer = PurchaseRecordSerializer(purchase_record)
+    
+    return Response({
+        'success': True,
+        'message': '购买成功',
+        'purchase': purchase_serializer.data
+    }, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
-def health_check(request):
-    """健康检查端点"""
-    return Response({'status': 'healthy', 'service': 'recommendation-backend'})
+def get_purchase_records(request):
+    """获取用户的购买记录"""
+    if not request.user.is_authenticated:
+        return Response({
+            'success': False,
+            'message': '用户未登录'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    purchases = PurchaseRecord.objects.filter(user=request.user)
+    serializer = PurchaseRecordSerializer(purchases, many=True)
+    
+    return Response({
+        'success': True,
+        'purchases': serializer.data
+    })
+
+@api_view(['POST'])
+def purchase_stock(request):
+    """股票交易（买入/卖出）"""
+    if not request.user.is_authenticated:
+        return Response({
+            'message': '用户未登录'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    serializer = StockPurchaseRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'message': '参数验证失败',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    data = serializer.validated_data
+    policyholder_name = data['policyholder_name']
+    quantity = data['quantity']
+    direction = data['direction']
+    stock_id = data['stock_id']
+    
+    # 获取股票信息
+    try:
+        stock = get_object_or_404(StockInfo, id=stock_id)
+    except Exception as e:
+        return Response({
+            'message': '股票不存在'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # 获取最新股价（这里使用模拟数据，实际应该从数据库获取）
+    # 在实际应用中，应该从 StockDailyData 获取最新价格
+    current_price = 50.0  # 模拟价格，实际应该从数据库获取
+    
+    # 计算交易金额
+    total_amount = quantity * current_price
+    
+    # 验证交易逻辑
+    if direction == 'sell':
+        # 检查用户是否持有足够的股票
+        # 这里简化处理，实际应该检查用户的持仓
+        user_holdings = PurchaseRecord.objects.filter(
+            user=request.user,
+            purchase_type='stock',
+            product_id=stock_id,
+            status='completed'
+        ).aggregate(total_quantity=models.Sum('quantity'))['total_quantity'] or 0
+        
+        if user_holdings < quantity:
+            return Response({
+                'message': f'持仓不足，当前持有{user_holdings}股，无法卖出{quantity}股'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # 创建购买记录
+    purchase_record = PurchaseRecord.objects.create(
+        user=request.user,
+        purchase_type='stock',
+        product_id=stock_id,
+        product_name=f"{stock.name} ({stock.symbol})",
+        amount=total_amount,
+        quantity=quantity,
+        status='completed'
+    )
+    
+    purchase_serializer = PurchaseRecordSerializer(purchase_record)
+    
+    return Response({
+        'message': f'股票{direction == "buy" and "买入" or "卖出"}成功',
+        'transaction': {
+            'policyholder_name': policyholder_name,
+            'stock_name': stock.name,
+            'stock_code': stock.symbol,
+            'direction': direction,
+            'quantity': quantity,
+            'price': current_price,
+            'total_amount': total_amount,
+            'transaction_time': purchase_record.purchase_date
+        },
+        'purchase_record': purchase_serializer.data
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET', 'PUT'])
+def user_profile(request):
+    """获取和更新用户个人信息"""
+    if not request.user.is_authenticated:
+        return Response({
+            'success': False,
+            'message': '用户未登录'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    if request.method == 'GET':
+        """获取用户信息"""
+        serializer = UserSerializer(request.user)
+        return Response({
+            'success': True,
+            'user': serializer.data
+        })
+    
+    elif request.method == 'PUT':
+        """更新用户信息"""
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': '个人信息更新成功',
+                'user': serializer.data
+            })
+        
+        return Response({
+            'success': False,
+            'message': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)

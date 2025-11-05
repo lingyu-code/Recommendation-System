@@ -5,79 +5,50 @@
         <div class="header-content">
           <span class="title">保险推荐</span>
           <div class="filter-section">
-            <select v-model="filterType" class="select">
-              <option value="">保险类型</option>
-              <option value="人寿保险">人寿保险</option>
-              <option value="健康保险">健康保险</option>
-              <option value="意外保险">意外保险</option>
-              <option value="财产保险">财产保险</option>
-              <option value="养老保险">养老保险</option>
-            </select>
 
-            <select v-model="filterCoverage" class="select">
-              <option value="">保障范围</option>
-              <option value="基础">基础</option>
-              <option value="全面">全面</option>
-              <option value="高端">高端</option>
-            </select>
-
-            <button class="btn btn-primary" @click="loadInsurance">筛选</button>
           </div>
         </div>
       </div>
 
-      <div class="table-container">
-        <table class="table" v-if="!loading">
-          <thead>
-            <tr>
-              <th>保险名称</th>
-              <th>保险公司</th>
-              <th>保险类型</th>
-              <th>保障范围</th>
-              <th>年保费</th>
-              <th>保障金额</th>
-              <th>保障期限</th>
-              <th>适用年龄</th>
-              <th>推荐指数</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="insurance in paginatedInsurance" :key="insurance.id">
-              <td>{{ insurance.name }}</td>
-              <td>{{ insurance.company }}</td>
-              <td>{{ insurance.type }}</td>
-              <td>
+      <div class="insurance-grid-container">
+        <div class="insurance-grid" v-if="!loading">
+          <div class="insurance-card" v-for="insurance in paginatedInsurance" :key="insurance.id">
+            <img :src="insurance.image" alt="Insurance Image" class="insurance-image">
+            <div class="card-content">
+              <h3 class="insurance-name">{{ insurance.name }}</h3>
+              <p class="insurance-company">{{ insurance.company }}</p>
+              <div class="tags">
+                <span class="tag">{{ insurance.type }}</span>
                 <span :class="['tag', getCoverageTagClass(insurance.coverage)]">
                   {{ insurance.coverage }}
                 </span>
-              </td>
-              <td>¥{{ insurance.premium.toLocaleString() }}</td>
-              <td>¥{{ insurance.coverage_amount.toLocaleString() }}</td>
-              <td>{{ insurance.term }}年</td>
-              <td>{{ insurance.age_range }}</td>
-              <td>
-                <div class="rating">
-                  <span class="stars">
-                    <span v-for="n in 5" :key="n" class="star"
-                      :class="{ active: n <= Math.floor(insurance.recommendation_score) }">
-                      ★
-                    </span>
-                  </span>
-                  <span class="score">{{ insurance.recommendation_score }}分</span>
-                </div>
-              </td>
-              <td>
-                <button class="btn btn-sm btn-primary" @click="viewInsuranceDetail(insurance)">
-                  查看详情
-                </button>
-                <button class="btn btn-sm btn-success" @click="simulatePurchase(insurance)">
-                  模拟购买
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+              <div class="info-row">
+                <span>年保费:</span>
+                <span class="price">¥{{ insurance.premium.toLocaleString() }}</span>
+              </div>
+              <div class="info-row">
+                <span>保障金额:</span>
+                <span>¥{{ insurance.coverage_amount.toLocaleString() }}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" @click="viewInsuranceDetail(insurance)">
+                查看详情
+              </button>
+              <button class="btn btn-sm btn-success" @click="purchaseInsurance(insurance)">
+                购买保险
+              </button>
+            </div>
+            <div class="insurance-details-tooltip">
+              <h4>{{ insurance.name }}</h4>
+              <p><strong>保障期限:</strong> {{ insurance.term }}年</p>
+              <p><strong>适用年龄:</strong> {{ insurance.age_range }}</p>
+              <p><strong>等待期:</strong> {{ insurance.waiting_period }}天</p>
+              <p><strong>保险描述:</strong> {{ insurance.description }}</p>
+            </div>
+          </div>
+        </div>
         <div v-if="loading" class="loading">加载中...</div>
       </div>
 
@@ -87,12 +58,7 @@
           共 {{ totalInsurance }} 条记录
         </div>
         <div class="pagination-controls">
-          <select v-model="pageSize" @change="handleSizeChange" class="select-sm">
-            <option value="10">10条/页</option>
-            <option value="20">20条/页</option>
-            <option value="50">50条/页</option>
-            <option value="100">100条/页</option>
-          </select>
+
 
           <button class="btn btn-sm" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">
             上一页
@@ -248,6 +214,13 @@ export default {
   name: 'Insurance',
   data() {
     return {
+      images: [
+        '家庭1.png', '家庭2.png', '家庭3.png', '家庭4.png',
+        '汽车1.png', '汽车2.png', '汽车3.png', '汽车4.png',
+        '运动1.png', '运动2.png', '运动3.png', '运动4.png',
+        '职场4.png', '职场男性1.png', '职场男性2.png', '职场男性3.png', '职场男性4.png',
+        '职场女性1.png', '职场女性2.png', '职场女性3.png'
+      ],
       insurance: [],
       filteredInsurance: [],   // ✅ 加上这个
       loading: false,
@@ -294,6 +267,7 @@ export default {
 
         if (response && response.results) {
           this.insurance = response.results.map(insurance => ({
+            image: `/images/${this.images[Math.floor(Math.random() * this.images.length)]}`,
             id: insurance.id,
             name: insurance.name,
             company: this.extractCompany(insurance.name),
@@ -519,27 +493,42 @@ export default {
         .slice(0, 3)
     },
 
-    simulatePurchase(insurance) {
+    async purchaseInsurance(insurance) {
       this.selectedInsurance = insurance
       this.purchaseForm.insured_name = ''
       this.purchaseForm.insured_age = 30
       this.purchaseDialogVisible = true
     },
 
-    confirmPurchase() {
+    async confirmPurchase() {
       if (!this.purchaseForm.insured_name) {
         alert('请输入投保人姓名')
         return
       }
 
-      const totalPremium = this.selectedInsurance.premium * this.selectedInsurance.term
-      alert(`成功为${this.purchaseForm.insured_name}购买${this.selectedInsurance.name}，总保费 ¥${totalPremium.toLocaleString()}`)
-      this.purchaseDialogVisible = false
+      try {
+        const totalPremium = this.selectedInsurance.premium * this.selectedInsurance.term
+        const purchaseData = {
+          product_type: 'insurance',
+          product_id: this.selectedInsurance.id,
+          amount: totalPremium,
+          quantity: this.selectedInsurance.term // 保障期限作为数量
+        }
+
+        const response = await apiService.purchaseProduct(purchaseData)
+
+        if (response.success) {
+          alert(`成功为${this.purchaseForm.insured_name}购买${this.selectedInsurance.name}，总保费 ¥${totalPremium.toLocaleString()}`)
+          this.purchaseDialogVisible = false
+        } else {
+          alert(`购买失败: ${response.message}`)
+        }
+      } catch (error) {
+        console.error('购买保险失败:', error)
+        alert('购买失败，请稍后重试')
+      }
     },
 
-    handleSizeChange() {
-      this.currentPage = 1
-    },
     async changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page
@@ -556,6 +545,119 @@ export default {
 </script>
 
 <style scoped>
+.insurance-grid-container {
+  padding: 20px;
+}
+
+.insurance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.insurance-image {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+}
+
+.insurance-card {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.insurance-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.insurance-card:hover .insurance-details-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.insurance-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #303133;
+}
+
+.insurance-company {
+  font-size: 12px;
+  color: #909399;
+  margin: 0 0 12px 0;
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.info-row .price {
+  font-weight: 600;
+  color: #e6a23c;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 20px 20px;
+  border-top: 1px solid #ebeef5;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.insurance-details-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 60px;
+  /* Adjust this value to leave space for the action buttons */
+  background: rgba(255, 255, 255, 0.98);
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+  transform: translateY(10px);
+  overflow-y: auto;
+  color: #303133;
+}
+
+.insurance-details-tooltip h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.insurance-details-tooltip p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .insurance {
   padding: 20px;
 }

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
-import Dashboard from '../views/Dashboard.vue'
+import Register from '../views/Register.vue'
 import Funds from '../views/Funds.vue'
 import Stocks from '../views/Stocks.vue'
 import FinancialDiagnosis from '../views/FinancialDiagnosis.vue'
@@ -9,18 +9,14 @@ import Profile from '../views/Profile.vue'
 
 const routes = [
   {
-    path: '/',
-    redirect: '/dashboard'
-  },
-  {
     path: '/login',
     name: 'Login',
     component: Login
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: Dashboard
+    path: '/register',
+    name: 'Register',
+    component: Register
   },
   {
     path: '/funds',
@@ -52,19 +48,6 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
-
-// 路由守卫
-router.beforeEach((to, from, next) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  
-  if (to.path !== '/login' && !isLoggedIn) {
-    next('/login')
-  } else if (to.path === '/login' && isLoggedIn) {
-    next('/dashboard')
-  } else {
-    next()
-  }
 })
 
 export default router
