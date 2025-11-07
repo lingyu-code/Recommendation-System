@@ -6,6 +6,7 @@ import Stocks from '../views/Stocks.vue'
 import FinancialDiagnosis from '../views/FinancialDiagnosis.vue'
 import Insurance from '../views/Insurance.vue'
 import Profile from '../views/Profile.vue'
+import Dashboard from '../views/Dashboard.vue'
 
 const routes = [
   {
@@ -42,6 +43,11 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: Profile
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard
   }
 ]
 

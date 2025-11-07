@@ -20,6 +20,13 @@
             <el-menu-item index="/stocks">股票推荐</el-menu-item>
           </el-sub-menu>
 
+          <el-menu-item index="/dashboard">
+            <el-icon>
+              <home-filled />
+            </el-icon>
+            <span>推荐总览</span>
+          </el-menu-item>
+
           <el-sub-menu index="2">
             <template #title>
               <el-icon>
@@ -75,7 +82,7 @@
 </template>
 
 <script>
-import { Location, Setting, User, Login, Logout } from '@element-plus/icons-vue'
+import { Location, Setting, User, Login, Logout, HomeFilled } from '@element-plus/icons-vue'
 import { mapState, mapActions } from 'vuex'
 
 export default {
@@ -85,7 +92,8 @@ export default {
     Setting,
     User,
     Login,
-    Logout
+    Logout,
+    HomeFilled
   },
   computed: {
     ...mapState(['isLoggedIn', 'userName', 'userAvatar']),
@@ -96,7 +104,8 @@ export default {
         '/financial-diagnosis': '理财诊断',
         '/insurance': '保险推荐',
         '/profile': '个人中心',
-        '/login': '登录'
+        '/login': '登录',
+        '/dashboard': '推荐总览'
       }
       return routeNames[this.$route.path] || '金融推荐系统'
     }

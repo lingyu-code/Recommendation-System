@@ -138,6 +138,55 @@
                         </div>
                     </div>
 
+                    <!-- 股票价格走势图 -->
+                    <div class="chart-section" v-if="stockChartData.length > 0">
+                        <h4>价格走势 (近30天)</h4>
+                        <div class="chart-container">
+                            <svg :width="chartWidth" :height="chartHeight"
+                                :viewBox="`0 0 ${chartWidth} ${chartHeight}`">
+                                <!-- X Axis -->
+                                <line :x1="chartPadding" :y1="chartHeight - chartPadding"
+                                    :x2="chartWidth - chartPadding" :y2="chartHeight - chartPadding" stroke="#ccc" />
+                                <!-- Y Axis -->
+                                <line :x1="chartPadding" :y1="chartPadding" :x2="chartPadding"
+                                    :y2="chartHeight - chartPadding" stroke="#ccc" />
+
+                                <!-- X Axis Labels -->
+                                <text v-for="(label, index) in chartXScale" :key="'x-label-' + index" :x="label.x"
+                                    :y="chartHeight - chartPadding + 15" text-anchor="middle" font-size="10"
+                                    fill="#666">
+                                    {{ label.text }}
+                                </text>
+
+                                <!-- Y Axis Labels -->
+                                <text v-for="(label, index) in chartYScale" :key="'y-label-' + index"
+                                    :x="chartPadding - 5" :y="label.y" text-anchor="end" font-size="10" fill="#666"
+                                    alignment-baseline="middle">
+                                    {{ label.text }}
+                                </text>
+
+                                <!-- Grid Lines (horizontal) -->
+                                <line v-for="(label, index) in chartYScale" :key="'y-grid-' + index" :x1="chartPadding"
+                                    :y1="label.y" :x2="chartWidth - chartPadding" :y2="label.y" stroke="#eee"
+                                    stroke-dasharray="2,2" />
+
+                                <!-- Grid Lines (vertical) -->
+                                <line v-for="(label, index) in chartXScale" :key="'x-grid-' + index" :x1="label.x"
+                                    :y1="chartPadding" :x2="label.x" :y2="chartHeight - chartPadding" stroke="#eee"
+                                    stroke-dasharray="2,2" />
+
+                                <!-- Data Line -->
+                                <polyline fill="none" stroke="#409EFF" stroke-width="2" :points="chartPoints" />
+
+                                <!-- Data Points -->
+                                <circle v-for="(point, index) in stockChartData" :key="'circle-' + index"
+                                    :cx="chartPadding + (index / (stockChartData.length - 1)) * (chartWidth - 2 * chartPadding)"
+                                    :cy="chartPadding + (chartHeight - 2 * chartPadding) - ((point.price - chartMinPrice) / (chartMaxPrice - chartMinPrice)) * (chartHeight - 2 * chartPadding)"
+                                    r="3" fill="#409EFF" />
+                            </svg>
+                        </div>
+                    </div>
+
                     <!-- 相似股票推荐 -->
                     <div class="similar-section">
                         <h4>相似股票推荐</h4>
@@ -249,7 +298,11 @@ export default {
                 policyholder_name: '',
                 direction: 'buy',
                 quantity: 100
-            }
+            },
+            stockChartData: [], // For storing random stock data
+            chartWidth: 400,
+            chartHeight: 200,
+            chartPadding: 30,
         }
     },
     computed: {
@@ -258,6 +311,54 @@ export default {
         },
         paginatedStocks() {
             return this.filteredStocks
+        },
+        chartPoints() {
+            if (this.stockChartData.length === 0) return '';
+
+            const maxPrice = this.chartMaxPrice;
+            const minPrice = this.chartMinPrice;
+            const chartInnerWidth = this.chartWidth - 2 * this.chartPadding;
+            const chartInnerHeight = this.chartHeight - 2 * this.chartPadding;
+
+            return this.stockChartData.map((point, index) => {
+                const x = this.chartPadding + (index / (this.stockChartData.length - 1)) * chartInnerWidth;
+                const y = this.chartPadding + chartInnerHeight - ((point.price - minPrice) / (maxPrice - minPrice)) * chartInnerHeight;
+                return `${x},${y}`;
+            }).join(' ');
+        },
+        chartMaxPrice() {
+            return Math.max(...this.stockChartData.map(p => p.price));
+        },
+        chartMinPrice() {
+            return Math.min(...this.stockChartData.map(p => p.price));
+        },
+        chartXScale() {
+            const labels = [];
+            const numLabels = 5; // Show 5 labels
+            const step = Math.floor(this.stockChartData.length / (numLabels - 1));
+            for (let i = 0; i < this.stockChartData.length; i += step) {
+                labels.push({
+                    x: this.chartPadding + (i / (this.stockChartData.length - 1)) * (this.chartWidth - 2 * this.chartPadding),
+                    text: this.stockChartData[i].date.substring(5) // MM-DD
+                });
+            }
+            return labels;
+        },
+        chartYScale() {
+            const labels = [];
+            const numLabels = 5;
+            const step = (this.chartMaxPrice - this.chartMinPrice) / (numLabels - 1);
+            const chartInnerHeight = this.chartHeight - 2 * this.chartPadding;
+
+            for (let i = 0; i < numLabels; i++) {
+                const price = this.chartMinPrice + i * step;
+                const y = this.chartPadding + chartInnerHeight - ((price - this.chartMinPrice) / (this.chartMaxPrice - this.chartMinPrice)) * chartInnerHeight;
+                labels.push({
+                    y: y,
+                    text: price.toFixed(2)
+                });
+            }
+            return labels;
         }
     },
     async mounted() {
@@ -279,22 +380,38 @@ export default {
 
                 if (response && response.results) {
                     // 使用后端返回的真实 StockInfo 数据
-                    this.stocks = response.results.map(stock => ({
-                        id: stock.id,
-                        name: stock.name,
-                        code: stock.symbol,
-                        industry: stock.industry,
-                        // 这些字段在StockInfo模型中不存在，使用默认值显示
-                        current_price: 50.0,  // 默认值，实际应该从StockDailyData获取
-                        change_percent: 0.0,  // 默认值
-                        pe_ratio: 15.0,      // 默认值
-                        market_cap: 10000000000, // 默认值
-                        high_52w: 60.0,      // 默认值
-                        low_52w: 40.0,       // 默认值
-                        trend: 'up',         // 默认值
-                        description: `${stock.name}是${stock.area}地区${stock.industry}行业的上市公司，于${stock.list_date}上市。`,
-                        recommendation_score: 4.0
-                    }))
+                    this.stocks = response.results.map(stock => {
+                        let seed = stock.symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        const getRandom = () => this.seededRandom(seed++);
+
+                        const currentPrice = parseFloat((getRandom() * 100 + 50).toFixed(2)); // 50 - 150
+                        const changePercent = parseFloat(((getRandom() - 0.5) * 20).toFixed(2)); // -10% to +10%
+                        const peRatio = parseFloat((getRandom() * 30 + 10).toFixed(2)); // 10 - 40
+                        const marketCap = parseFloat((getRandom() * 100000000000 + 1000000000).toFixed(0)); // 1亿 - 1000亿
+
+                        const high52w = parseFloat((currentPrice * (1 + getRandom() * 0.2)).toFixed(2)); // +0% to +20%
+                        const low52w = parseFloat((currentPrice * (1 - getRandom() * 0.2)).toFixed(2)); // -0% to -20%
+
+                        let trend = 'sideways';
+                        if (changePercent > 2) trend = 'up';
+                        else if (changePercent < -2) trend = 'down';
+
+                        return {
+                            id: stock.id,
+                            name: stock.name,
+                            code: stock.symbol,
+                            industry: stock.industry,
+                            current_price: currentPrice,
+                            change_percent: changePercent,
+                            pe_ratio: peRatio,
+                            market_cap: marketCap,
+                            high_52w: high52w,
+                            low_52w: low52w,
+                            trend: trend,
+                            description: `${stock.name}是${stock.area}地区${stock.industry}行业的上市公司，于${stock.list_date}上市。`,
+                            recommendation_score: parseFloat((getRandom() * 5).toFixed(1)) // 0.0 - 5.0
+                        };
+                    });
                     console.log('Processed stocks:', this.stocks.slice(0, 3))
                     this.totalStocks = response.count || 0
                     this.applyFilters()
@@ -309,6 +426,31 @@ export default {
             } finally {
                 this.loading = false
             }
+        },
+
+        // Simple seeded pseudo-random number generator
+        seededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        },
+
+        generateRandomStockData(stockCode) {
+            const data = [];
+            // Convert stockCode to a numeric seed
+            let seed = stockCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+            let currentPrice = this.seededRandom(seed++) * 100 + 50; // Base price between 50 and 150
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                currentPrice += (this.seededRandom(seed++) - 0.5) * 5; // Price fluctuates by +/- 2.5
+                currentPrice = Math.max(10, currentPrice); // Ensure price doesn't go too low
+                data.push({
+                    date: date.toISOString().substring(0, 10),
+                    price: parseFloat(currentPrice.toFixed(2))
+                });
+            }
+            this.stockChartData = data;
         },
 
         applyFilters() {
@@ -356,11 +498,23 @@ export default {
         async viewStockDetail(stock) {
             this.selectedStock = stock
             this.detailDialogVisible = true
+            this.generateRandomStockData(stock.code); // Generate data for the chart
 
-            // 模拟获取相似股票
-            this.similarStocks = this.stocks
-                .filter(s => s.id !== stock.id && s.industry === stock.industry)
-                .slice(0, 3)
+            // 获取相似股票
+            let similarByIndustry = this.stocks
+                .filter(s => s.id !== stock.id && s.industry === stock.industry);
+
+            // 如果同行业股票不足，则从其他股票中随机选取
+            if (similarByIndustry.length < 3) {
+                let otherStocks = this.stocks.filter(s => s.id !== stock.id && !similarByIndustry.some(sib => sib.id === s.id));
+                // Shuffle otherStocks and take the remaining needed
+                for (let i = otherStocks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [otherStocks[i], otherStocks[j]] = [otherStocks[j], otherStocks[i]];
+                }
+                similarByIndustry = similarByIndustry.concat(otherStocks.slice(0, 3 - similarByIndustry.length));
+            }
+            this.similarStocks = similarByIndustry.slice(0, 3);
         },
 
         async purchaseStock(stock) {

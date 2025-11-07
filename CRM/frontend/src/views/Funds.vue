@@ -224,6 +224,12 @@ export default {
     await this.loadFunds()
   },
   methods: {
+    // Simple seeded pseudo-random number generator
+    seededRandom(seed) {
+      let x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    },
+
     async loadFunds() {
       this.loading = true
       try {
@@ -236,18 +242,31 @@ export default {
         })
 
         if (response && response.results) {
-          this.funds = response.results.map(fund => ({
-            id: fund.id,
-            name: fund.name,
-            code: fund.code,
-            type: fund.fund_type,
-            risk_level: this.calculateRiskLevel(fund),
-            expected_return: this.calculateExpectedReturn(fund),
-            management_fee: fund.fee || 0.015,
-            min_investment: 1000,
-            description: `${fund.name}由${fund.managers}管理，${fund.company}发行。`,
-            recommendation_score: this.calculateRecommendationScore(fund)
-          }))
+          this.funds = response.results.map(fund => {
+            let seed = fund.code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const getRandom = () => this.seededRandom(seed++);
+
+            const riskLevels = ['low', 'medium', 'high'];
+            const randomRiskLevel = riskLevels[Math.floor(getRandom() * riskLevels.length)];
+
+            const expectedReturn = parseFloat((getRandom() * 0.15 + 0.03).toFixed(4)); // 3% - 18%
+            const managementFee = parseFloat((getRandom() * 0.02 + 0.005).toFixed(4)); // 0.5% - 2.5%
+            const minInvestment = Math.round((getRandom() * 9 + 1) * 1000); // 1000 - 10000
+            const recommendationScore = parseFloat((getRandom() * 5).toFixed(1)); // 0.0 - 5.0
+
+            return {
+              id: fund.id,
+              name: fund.name,
+              code: fund.code,
+              type: fund.fund_type,
+              risk_level: randomRiskLevel,
+              expected_return: expectedReturn,
+              management_fee: managementFee,
+              min_investment: minInvestment,
+              description: `${fund.name}由${fund.managers}管理，${fund.company}发行。`,
+              recommendation_score: recommendationScore
+            };
+          });
           this.totalFunds = response.count || 0
         } else {
           this.funds = []
@@ -260,38 +279,6 @@ export default {
       } finally {
         this.loading = false
       }
-    },
-
-    calculateRiskLevel(fund) {
-      const riskMap = {
-        '股票型': 'high',
-        '混合型': 'medium',
-        '债券型': 'low',
-        '货币型': 'low'
-      }
-      return riskMap[fund.fund_type] || 'medium'
-    },
-
-    calculateExpectedReturn(fund) {
-      const baseReturn = fund.star_count ? (fund.star_count / 5) * 0.15 : 0.08
-      const typeMultiplier = {
-        '股票型': 1.2,
-        '混合型': 1.0,
-        '债券型': 0.6,
-        '货币型': 0.3
-      }
-      return baseReturn * (typeMultiplier[fund.fund_type] || 1.0)
-    },
-
-    calculateRecommendationScore(fund) {
-      let score = 3.0
-      if (fund.star_count) {
-        score += (fund.star_count / 5) * 2
-      }
-      if (fund.fee && fund.fee < 0.01) {
-        score += 0.5
-      }
-      return Math.min(score, 5.0)
     },
 
     getRiskTagClass(riskLevel) {

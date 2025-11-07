@@ -41,15 +41,24 @@ export const apiService = {
     getFunds(params = {}) {
         return api.get('/funds/', { params })
     },
+    getFundRecommendations() {
+        return api.get('/funds/recommendations/')
+    },
 
     // 股票相关
     getStocks(params = {}) {
         return api.get('/stocks/', { params })
     },
+    getStockRecommendations() {
+        return api.get('/stocks/recommendations/')
+    },
 
     // 保险相关
     getInsuranceProducts(params = {}) {
         return api.get('/insurance/', { params })
+    },
+    getInsuranceRecommendations() {
+        return api.get('/insurance/recommendations/')
     },
 
     // 股票日数据
@@ -91,6 +100,10 @@ export const apiService = {
 
     getPurchaseRecords() {
         return api.get('/purchase/records/')
+    },
+
+    getMptSuggestions() {
+        return api.get('/mpt-suggestions/')
     },
 }
 

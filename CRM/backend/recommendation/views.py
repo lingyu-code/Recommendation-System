@@ -16,16 +16,49 @@ from .recommendation_algorithms import RecommendationEngine
 class FundViewSet(viewsets.ModelViewSet):
     queryset = Fund.objects.all()
     serializer_class = FundSerializer
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def recommendations(self, request):
+        engine = RecommendationEngine()
+        user_profile = request.user # Assuming request.user is the User object with profile info
+        if not user_profile:
+            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # For fund recommendations, we might need a clicked_fund_id for collaborative filtering.
+        # For now, we'll just use risk-based and popularity.
+        recs = engine.fund_recommendation(user_profile)
+        # The recommendations from the engine are already dicts, no need for serializer
+        return Response(recs)
     
 
 class InsuranceProductViewSet(viewsets.ModelViewSet):
     queryset = InsuranceProduct.objects.all()
     serializer_class = InsuranceProductSerializer
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def recommendations(self, request):
+        engine = RecommendationEngine()
+        user_profile = request.user # Assuming request.user is the User object with profile info
+        if not user_profile:
+            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        recs = engine.insurance_recommendation(user_profile)
+        return Response(recs)
     
 
 class StockInfoViewSet(viewsets.ModelViewSet):
     queryset = StockInfo.objects.all()
     serializer_class = StockInfoSerializer
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def recommendations(self, request):
+        engine = RecommendationEngine()
+        user_profile = request.user # Assuming request.user is the User object with profile info
+        if not user_profile:
+            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        recs = engine.stock_recommendation(user_profile)
+        return Response(recs)
     
 
 class StockDailyDataViewSet(viewsets.ModelViewSet):
@@ -211,6 +244,25 @@ def purchase_stock(request):
         },
         'purchase_record': purchase_serializer.data
     }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+def get_mpt_suggestions(request):
+    """获取Modern Portfolio Theory (MPT) 资产配置建议"""
+    if not request.user.is_authenticated:
+        return Response({
+            'success': False,
+            'message': '用户未登录'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    engine = RecommendationEngine()
+    user_profile_id = request.user.id # Assuming request.user is the User object
+    
+    suggestions = engine.get_mpt_suggestions(user_profile_id)
+    
+    return Response({
+        'success': True,
+        'suggestions': suggestions
+    })
 
 @api_view(['GET', 'PUT'])
 def user_profile(request):
