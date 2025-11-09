@@ -36,6 +36,7 @@
             </template>
             <el-menu-item index="/financial-diagnosis">理财诊断</el-menu-item>
             <el-menu-item index="/insurance">保险推荐</el-menu-item>
+            <el-menu-item index="/machine-learning">机器学习</el-menu-item>
           </el-sub-menu>
 
           <el-menu-item index="/profile">
@@ -105,7 +106,8 @@ export default {
         '/insurance': '保险推荐',
         '/profile': '个人中心',
         '/login': '登录',
-        '/dashboard': '推荐总览'
+        '/dashboard': '推荐总览',
+        '/machine-learning': '机器学习模型训练'
       }
       return routeNames[this.$route.path] || '金融推荐系统'
     }

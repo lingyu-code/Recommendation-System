@@ -7,6 +7,7 @@ import FinancialDiagnosis from '../views/FinancialDiagnosis.vue'
 import Insurance from '../views/Insurance.vue'
 import Profile from '../views/Profile.vue'
 import Dashboard from '../views/Dashboard.vue'
+import MachineLearning from '../views/MachineLearning.vue'
 
 const routes = [
   {
@@ -48,6 +49,11 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard
+  },
+  {
+    path: '/machine-learning',
+    name: 'MachineLearning',
+    component: MachineLearning
   }
 ]
 
