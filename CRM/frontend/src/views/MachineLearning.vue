@@ -1,606 +1,561 @@
 <template>
     <div class="machine-learning-container">
-        <h1>机器学习模型训练</h1>
-        <p>使用三种不同的机器学习算法训练股票、基金、保险的数据</p>
+        <h1>机器学习演示</h1>
 
-        <!-- 数据生成和训练控制 -->
-        <section class="control-section">
-            <h2>训练控制</h2>
-            <div class="control-panel">
-                <div class="control-group">
-                    <label>数据样本数量:</label>
-                    <input type="number" v-model.number="sampleSize" min="100" max="10000" step="100">
-                </div>
-                <div class="control-group">
-                    <label>训练轮次:</label>
-                    <input type="number" v-model.number="epochs" min="1" max="100" step="1">
-                </div>
-                <div class="control-group">
-                    <button @click="generateData" :disabled="isTraining" class="btn btn-primary">
-                        数据提取
-                    </button>
-                    <button @click="trainAllModels" :disabled="isTraining || !hasData" class="btn btn-success">
-                        训练模型
-                    </button>
-                    <button @click="resetAll" class="btn btn-secondary">
-                        重置
-                    </button>
-                </div>
+        <div class="section">
+            <h2>股票价格预测 (回归)</h2>
+            <div class="controls">
+                <label for="stockSelector">选择股票:</label>
+                <select id="stockSelector" v-model="selectedStock" @change="generateDataAndPredict">
+                    <option v-for="stock in stockOptions" :key="stock.value" :value="stock.value">
+                        {{ stock.label }}
+                    </option>
+                </select>
+                <button @click="generateNewRandomStock">生成股票数据预测</button>
             </div>
-        </section>
-
-        <!-- 训练进度 -->
-        <section v-if="isTraining" class="progress-section">
-            <h2>训练进度</h2>
-            <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress-fill" :style="{ width: overallProgress + '%' }"></div>
-                </div>
-                <div class="progress-text">{{ overallProgress.toFixed(1) }}%</div>
+            <div class="chart-container">
+                <canvas id="regressionChart"></canvas>
             </div>
-            <div class="model-progress">
-                <div v-for="model in modelProgress" :key="model.name" class="model-item">
-                    <span>{{ model.name }}:</span>
-                    <span :class="{ 'completed': model.completed }">{{ model.status }}</span>
-                </div>
+        </div>
+
+        <div class="section">
+            <h2>基金聚类分析 (K-Means)</h2>
+            <div class="controls">
+                <label for="numClusters">聚类数量 (K):</label>
+                <input type="number" id="numClusters" v-model.number="numClusters" min="2" max="10">
+                <label for="numFunds">基金数量:</label>
+                <input type="number" id="numFunds" v-model.number="numFunds" min="20" max="500">
+                <button @click="generateFundDataAndCluster">生成基金数据聚类</button>
             </div>
-        </section>
-
-        <!-- 模型结果展示 -->
-        <section v-if="hasResults" class="results-section">
-            <h2>模型训练结果</h2>
-
-            <!-- 股票预测模型 -->
-            <div class="model-result">
-                <h3>股票价格预测 (线性回归)</h3>
-                <div class="result-content">
-                    <div class="metrics">
-                        <div class="metric-item">
-                            <span class="metric-label">均方误差 (MSE):</span>
-                            <span class="metric-value">{{ stockResults.mse.toFixed(4) }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">R² 分数:</span>
-                            <span class="metric-value">{{ stockResults.r2.toFixed(4) }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">训练时间:</span>
-                            <span class="metric-value">{{ stockResults.trainingTime.toFixed(2) }}ms</span>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-wrapper">
-                            <svg :width="chartWidth" :height="chartHeight"
-                                :viewBox="`0 0 ${chartWidth} ${chartHeight}`">
-                                <!-- 坐标轴 -->
-                                <line :x1="padding" :y1="padding" :x2="padding" :y2="chartHeight - padding"
-                                    stroke="#ccc" />
-                                <line :x1="padding" :y1="chartHeight - padding" :x2="chartWidth - padding"
-                                    :y2="chartHeight - padding" stroke="#ccc" />
-
-                                <!-- 实际值点 -->
-                                <circle v-for="(point, index) in stockChartData.actual" :key="'actual-' + index"
-                                    :cx="padding + (index / (stockChartData.actual.length - 1)) * (chartWidth - 2 * padding)"
-                                    :cy="chartHeight - padding - (point / stockChartMax) * (chartHeight - 2 * padding)"
-                                    r="3" fill="#409EFF" />
-
-                                <!-- 预测值线 -->
-                                <polyline :points="stockChartData.predicted.map((point, index) =>
-                                    `${padding + (index / (stockChartData.predicted.length - 1)) * (chartWidth - 2 * padding)},${chartHeight - padding - (point / stockChartMax) * (chartHeight - 2 * padding)}`
-                                ).join(' ')" fill="none" stroke="#E6A23C" stroke-width="2" />
-
-                                <!-- 图例 -->
-                                <circle :cx="chartWidth - 100" :cy="padding + 20" r="3" fill="#409EFF" />
-                                <text :x="chartWidth - 90" :y="padding + 23" font-size="12" fill="#333">实际值</text>
-                                <line :x1="chartWidth - 100" :y1="padding + 40" :x2="chartWidth - 80" :y2="padding + 40"
-                                    stroke="#E6A23C" stroke-width="2" />
-                                <text :x="chartWidth - 90" :y="padding + 43" font-size="12" fill="#333">预测值</text>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
+            <div class="chart-container">
+                <canvas id="clusterChart"></canvas>
             </div>
+        </div>
 
-            <!-- 基金分类模型 -->
-            <div class="model-result">
-                <h3>基金风险评估 (K-均值聚类)</h3>
-                <div class="result-content">
-                    <div class="metrics">
-                        <div class="metric-item">
-                            <span class="metric-label">轮廓系数:</span>
-                            <span class="metric-value">{{ fundResults.silhouetteScore.toFixed(4) }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">聚类数量:</span>
-                            <span class="metric-value">{{ fundResults.clusters }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">训练时间:</span>
-                            <span class="metric-value">{{ fundResults.trainingTime.toFixed(2) }}ms</span>
-                        </div>
-                    </div>
-                    <div class="cluster-results">
-                        <h4>聚类分布</h4>
-                        <div class="cluster-bars">
-                            <div v-for="(count, cluster) in fundResults.clusterDistribution" :key="'cluster-' + cluster"
-                                class="cluster-bar">
-                                <div class="bar-label">集群 {{ cluster }}</div>
-                                <div class="bar-container">
-                                    <div class="bar-fill"
-                                        :style="{ width: (count / fundResults.totalSamples * 100) + '%' }"></div>
-                                    <span class="bar-text">{{ count }} 样本 ({{ (count / fundResults.totalSamples *
-                                        100).toFixed(1) }}%)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="section">
+            <h2>保险决策树</h2>
+            <div class="controls">
+                <label for="numInsuranceClients">客户数量:</label>
+                <input type="number" id="numInsuranceClients" v-model.number="numInsuranceClients" min="20" max="500">
+                <label for="maxDepth">最大树深度:</label>
+                <input type="number" id="maxDepth" v-model.number="maxDepth" min="1" max="5">
+                <button @click="generateInsuranceDataAndTree">构建保险数据决策树</button>
             </div>
-
-            <!-- 保险推荐模型 -->
-            <div class="model-result">
-                <h3>保险产品推荐 (决策树)</h3>
-                <div class="result-content">
-                    <div class="metrics">
-                        <div class="metric-item">
-                            <span class="metric-label">准确率:</span>
-                            <span class="metric-value">{{ insuranceResults.accuracy.toFixed(4) }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">F1 分数:</span>
-                            <span class="metric-value">{{ insuranceResults.f1Score.toFixed(4) }}</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">训练时间:</span>
-                            <span class="metric-value">{{ insuranceResults.trainingTime.toFixed(2) }}ms</span>
-                        </div>
-                    </div>
-                    <div class="feature-importance">
-                        <h4>特征重要性</h4>
-                        <div class="importance-bars">
-                            <div v-for="(importance, feature) in insuranceResults.featureImportance"
-                                :key="'feature-' + feature" class="importance-bar">
-                                <div class="feature-label">{{ getFeatureLabel(feature) }}</div>
-                                <div class="importance-container">
-                                    <div class="importance-fill" :style="{ width: (importance * 100) + '%' }"></div>
-                                    <span class="importance-text">{{ (importance * 100).toFixed(1) }}%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="chart-container">
+                <canvas id="decisionTreeChart"></canvas>
             </div>
-        </section>
-
-        <!-- 模型比较 -->
-        <section v-if="hasResults" class="comparison-section">
-            <h2>模型性能比较</h2>
-            <div class="comparison-chart">
-                <svg :width="comparisonWidth" :height="comparisonHeight"
-                    :viewBox="`0 0 ${comparisonWidth} ${comparisonHeight}`">
-                    <!-- 坐标轴 -->
-                    <line :x1="comparisonPadding" :y1="comparisonPadding" :x2="comparisonPadding"
-                        :y2="comparisonHeight - comparisonPadding" stroke="#ccc" />
-                    <line :x1="comparisonPadding" :y1="comparisonHeight - comparisonPadding"
-                        :x2="comparisonWidth - comparisonPadding" :y2="comparisonHeight - comparisonPadding"
-                        stroke="#ccc" />
-
-                    <!-- 模型性能条 -->
-                    <rect v-for="(model, index) in modelComparison" :key="'comparison-' + index"
-                        :x="comparisonPadding + index * (comparisonWidth - 2 * comparisonPadding) / modelComparison.length + 10"
-                        :y="comparisonHeight - comparisonPadding - (model.score * (comparisonHeight - 2 * comparisonPadding))"
-                        :width="(comparisonWidth - 2 * comparisonPadding) / modelComparison.length - 20"
-                        :height="model.score * (comparisonHeight - 2 * comparisonPadding)" :fill="model.color" />
-
-                    <!-- 模型标签 -->
-                    <text v-for="(model, index) in modelComparison" :key="'label-' + index"
-                        :x="comparisonPadding + index * (comparisonWidth - 2 * comparisonPadding) / modelComparison.length + (comparisonWidth - 2 * comparisonPadding) / modelComparison.length / 2"
-                        :y="comparisonHeight - comparisonPadding + 20" text-anchor="middle" font-size="12" fill="#333">
-                        {{ model.name }}
-                    </text>
-
-                    <!-- 性能值 -->
-                    <text v-for="(model, index) in modelComparison" :key="'value-' + index"
-                        :x="comparisonPadding + index * (comparisonWidth - 2 * comparisonPadding) / modelComparison.length + (comparisonWidth - 2 * comparisonPadding) / modelComparison.length / 2"
-                        :y="comparisonHeight - comparisonPadding - (model.score * (comparisonHeight - 2 * comparisonPadding)) - 5"
-                        text-anchor="middle" font-size="10" fill="#333">
-                        {{ (model.score * 100).toFixed(1) }}%
-                    </text>
-                </svg>
-            </div>
-        </section>
+        </div>
     </div>
 </template>
 
 <script>
+import Chart from 'chart.js/auto';
+
 export default {
     name: 'MachineLearning',
     data() {
+        const stockOptions = [];
+        for (let i = 1; i <= 200; i++) {
+            stockOptions.push({ label: `股票 ${i}`, value: `stock_${i}` });
+        }
+
         return {
-            sampleSize: 1000,
-            epochs: 10,
-            isTraining: false,
-            hasData: false,
-            hasResults: false,
-            overallProgress: 0,
+            // Regression Data
+            numDataPoints: 100,
+            initialPrice: 100,
+            volatility: 0.02, // Daily price change percentage
+            regressionChart: null,
+            data: [],
+            predictions: [],
+            predictedSlope: 0,
+            predictedIntercept: 0,
+            stockOptions: stockOptions,
+            selectedStock: stockOptions[0].value,
 
-            // 虚拟数据
-            stockData: [],
-            fundData: [],
-            insuranceData: [],
+            // Clustering Data
+            numClusters: 3,
+            numFunds: 100,
+            fundData: [], // { x: return, y: risk, cluster: null }
+            centroids: [], // { x: return, y: risk }
+            clusterChart: null,
 
-            // 模型进度
-            modelProgress: [
-                { name: '股票价格预测', status: '等待训练', completed: false },
-                { name: '基金风险评估', status: '等待训练', completed: false },
-                { name: '保险产品推荐', status: '等待训练', completed: false }
-            ],
-
-            // 模型结果
-            stockResults: {
-                mse: 0,
-                r2: 0,
-                trainingTime: 0,
-                predictions: [],
-                actualValues: []
-            },
-            fundResults: {
-                silhouetteScore: 0,
-                clusters: 0,
-                trainingTime: 0,
-                clusterDistribution: {},
-                totalSamples: 0
-            },
-            insuranceResults: {
-                accuracy: 0,
-                f1Score: 0,
-                trainingTime: 0,
-                featureImportance: {}
-            },
-
-            // 图表配置
-            chartWidth: 600,
-            chartHeight: 300,
-            padding: 40,
-            comparisonWidth: 600,
-            comparisonHeight: 300,
-            comparisonPadding: 50
+            // Decision Tree Data
+            numInsuranceClients: 100,
+            maxDepth: 3,
+            insuranceData: [], // { age, income, children, buysInsurance }
+            decisionTree: null, // Stores the built decision tree
+            decisionTreeChart: null,
         };
     },
-    computed: {
-        stockChartData() {
-            if (!this.stockResults.predictions.length) {
-                return { actual: [], predicted: [] };
-            }
-
-            // 取前50个样本用于图表展示
-            const sampleCount = Math.min(50, this.stockResults.predictions.length);
-            return {
-                actual: this.stockResults.actualValues.slice(0, sampleCount),
-                predicted: this.stockResults.predictions.slice(0, sampleCount)
-            };
-        },
-        stockChartMax() {
-            const allValues = [...this.stockChartData.actual, ...this.stockChartData.predicted];
-            return Math.max(...allValues, 1);
-        },
-        modelComparison() {
-            return [
-                {
-                    name: '股票预测',
-                    score: Math.max(0, 1 - this.stockResults.mse / 100), // 基于MSE的评分
-                    color: '#409EFF'
-                },
-                {
-                    name: '基金聚类',
-                    score: Math.max(0, this.fundResults.silhouetteScore), // 轮廓系数作为评分
-                    color: '#67C23A'
-                },
-                {
-                    name: '保险推荐',
-                    score: this.insuranceResults.accuracy, // 准确率作为评分
-                    color: '#E6A23C'
-                }
-            ];
-        }
+    mounted() {
+        this.generateDataAndPredict();
+        this.generateFundDataAndCluster();
+        this.generateInsuranceDataAndTree();
     },
     methods: {
-        async generateData() {
-            this.isTraining = true;
-            this.overallProgress = 0;
-
-            // 生成股票数据（价格预测）
-            await this.generateStockData();
-            this.overallProgress = 33;
-
-            // 生成基金数据（风险评估）
-            await this.generateFundData();
-            this.overallProgress = 66;
-
-            // 生成保险数据（产品推荐）
-            await this.generateInsuranceData();
-            this.overallProgress = 100;
-
-            this.hasData = true;
-            this.isTraining = false;
-        },
-
+        // --- Regression Methods ---
         generateStockData() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    this.stockData = [];
-                    for (let i = 0; i < this.sampleSize; i++) {
-                        // 生成虚拟股票数据：价格受市场指数、市盈率、成交量影响
-                        const marketIndex = Math.random() * 1000 + 3000; // 市场指数
-                        const peRatio = Math.random() * 50 + 10; // 市盈率
-                        const volume = Math.random() * 1000000 + 100000; // 成交量
-                        const volatility = Math.random() * 0.2 + 0.1; // 波动率
-
-                        // 模拟股票价格（线性关系 + 噪声）
-                        const basePrice = 50 + marketIndex * 0.01 + peRatio * 0.5 - volume * 0.000001;
-                        const price = basePrice + (Math.random() - 0.5) * 20;
-
-                        this.stockData.push({
-                            marketIndex,
-                            peRatio,
-                            volume,
-                            volatility,
-                            price: Math.max(1, price)
-                        });
-                    }
-                    resolve();
-                }, 500);
-            });
+            this.data = [];
+            let currentPrice = this.initialPrice + (Math.random() * 20 - 10); // Add some randomness to initial price
+            for (let i = 0; i < this.numDataPoints; i++) {
+                const x = i; // Time/Index
+                const dailyChange = (Math.random() * 2 - 1) * this.volatility * currentPrice;
+                currentPrice += dailyChange;
+                this.data.push({ x, y: currentPrice });
+            }
         },
 
-        generateFundData() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    this.fundData = [];
-                    for (let i = 0; i < this.sampleSize; i++) {
-                        // 生成虚拟基金数据：风险评估特征
-                        const returnRate = (Math.random() - 0.5) * 0.4; // 年化收益率
-                        const volatility = Math.random() * 0.3 + 0.05; // 波动率
-                        const sharpeRatio = returnRate / (volatility + 0.01); // 夏普比率
-                        const maxDrawdown = Math.random() * 0.4 + 0.1; // 最大回撤
-                        const fundSize = Math.random() * 100 + 1; // 基金规模（亿）
-
-                        this.fundData.push({
-                            returnRate,
-                            volatility,
-                            sharpeRatio,
-                            maxDrawdown,
-                            fundSize
-                        });
-                    }
-                    resolve();
-                }, 500);
-            });
+        generateNewRandomStock() {
+            this.generateStockData();
+            this.performRegression();
+            this.renderRegressionChart();
         },
 
-        generateInsuranceData() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    this.insuranceData = [];
-                    for (let i = 0; i < this.sampleSize; i++) {
-                        // 生成虚拟保险数据：用户特征和产品偏好
-                        const age = Math.floor(Math.random() * 50 + 18); // 年龄
-                        const income = Math.random() * 100000 + 20000; // 年收入
-                        const riskTolerance = Math.random(); // 风险承受能力
-                        const familySize = Math.floor(Math.random() * 5 + 1); // 家庭规模
-                        const healthScore = Math.random(); // 健康状况
+        performRegression() {
+            if (this.data.length === 0) {
+                this.predictions = [];
+                this.predictedSlope = 0;
+                this.predictedIntercept = 0;
+                return;
+            }
 
-                        // 模拟保险产品偏好（0: 意外险, 1: 医疗险, 2: 寿险, 3: 重疾险）
-                        const preferredProduct = Math.floor(Math.random() * 4);
+            let sumX = 0;
+            let sumY = 0;
+            let sumXY = 0;
+            let sumXX = 0;
+            const n = this.data.length;
 
-                        this.insuranceData.push({
-                            age,
-                            income,
-                            riskTolerance,
-                            familySize,
-                            healthScore,
-                            preferredProduct
-                        });
-                    }
-                    resolve();
-                }, 500);
-            });
-        },
+            for (const point of this.data) {
+                sumX += point.x;
+                sumY += point.y;
+                sumXY += point.x * point.y;
+                sumXX += point.x * point.x;
+            }
 
-        async trainAllModels() {
-            this.isTraining = true;
-            this.hasResults = false;
-            this.overallProgress = 0;
+            const denominator = (n * sumXX - sumX * sumX);
+            if (denominator === 0) {
+                this.predictedSlope = 0;
+                this.predictedIntercept = sumY / n;
+            } else {
+                this.predictedSlope = (n * sumXY - sumX * sumY) / denominator;
+                this.predictedIntercept = (sumY - this.predictedSlope * sumX) / n;
+            }
 
-            // 重置模型进度
-            this.modelProgress = this.modelProgress.map(model => ({
-                ...model,
-                status: '等待训练',
-                completed: false
+            this.predictions = this.data.map(point => ({
+                x: point.x,
+                y: this.predictedSlope * point.x + this.predictedIntercept,
             }));
-
-            // 训练股票预测模型（线性回归）
-            await this.trainStockModel();
-            this.overallProgress = 33;
-            this.modelProgress[0].status = '训练完成';
-            this.modelProgress[0].completed = true;
-
-            // 训练基金风险评估模型（K-均值聚类）
-            await this.trainFundModel();
-            this.overallProgress = 66;
-            this.modelProgress[1].status = '训练完成';
-            this.modelProgress[1].completed = true;
-
-            // 训练保险推荐模型（决策树）
-            await this.trainInsuranceModel();
-            this.overallProgress = 100;
-            this.modelProgress[2].status = '训练完成';
-            this.modelProgress[2].completed = true;
-
-            this.hasResults = true;
-            this.isTraining = false;
         },
 
-        trainStockModel() {
-            return new Promise(resolve => {
-                const startTime = performance.now();
+        generateDataAndPredict() {
+            this.generateStockData();
+            this.performRegression();
+            this.renderRegressionChart();
+        },
 
-                // 模拟线性回归训练
-                setTimeout(() => {
-                    // 生成预测结果
-                    const predictions = [];
-                    const actualValues = [];
+        renderRegressionChart() {
+            const ctx = document.getElementById('regressionChart').getContext('2d');
 
-                    for (let i = 0; i < this.stockData.length; i++) {
-                        const stock = this.stockData[i];
-                        // 模拟线性回归预测（添加一些噪声）
-                        const prediction = stock.price * 0.9 + Math.random() * 10;
-                        predictions.push(prediction);
-                        actualValues.push(stock.price);
-                    }
+            if (this.regressionChart) {
+                this.regressionChart.destroy();
+            }
 
-                    // 计算MSE和R²
-                    let mse = 0;
-                    let totalVariance = 0;
-                    const meanActual = actualValues.reduce((a, b) => a + b, 0) / actualValues.length;
-
-                    for (let i = 0; i < predictions.length; i++) {
-                        mse += Math.pow(predictions[i] - actualValues[i], 2);
-                        totalVariance += Math.pow(actualValues[i] - meanActual, 2);
-                    }
-
-                    mse /= predictions.length;
-                    const r2 = 1 - (mse * predictions.length) / totalVariance;
-
-                    this.stockResults = {
-                        mse: Math.max(0, mse),
-                        r2: Math.max(0, Math.min(1, r2)),
-                        trainingTime: performance.now() - startTime,
-                        predictions: predictions,
-                        actualValues: actualValues
-                    };
-
-                    resolve();
-                }, 1000);
+            this.regressionChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: `股票数据 (${this.selectedStock.toUpperCase()})`,
+                            data: this.data,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            pointRadius: 3,
+                            showLine: true,
+                            tension: 0.4,
+                        },
+                        {
+                            label: `回归线 (y = ${this.predictedSlope.toFixed(2)}x + ${this.predictedIntercept.toFixed(2)})`,
+                            data: this.predictions,
+                            type: 'line',
+                            fill: false,
+                            borderColor: 'red',
+                            tension: 0.1,
+                            pointRadius: 0,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '时间/索引',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '股票价格',
+                            },
+                        },
+                    },
+                },
             });
         },
 
-        trainFundModel() {
-            return new Promise(resolve => {
-                const startTime = performance.now();
-
-                // 模拟K-均值聚类训练
-                setTimeout(() => {
-                    // 模拟聚类结果
-                    const clusters = 3;
-                    const clusterDistribution = {};
-                    const totalSamples = this.fundData.length;
-
-                    // 随机分配样本到集群
-                    for (let i = 0; i < totalSamples; i++) {
-                        const cluster = Math.floor(Math.random() * clusters);
-                        clusterDistribution[cluster] = (clusterDistribution[cluster] || 0) + 1;
-                    }
-
-                    // 模拟轮廓系数
-                    const silhouetteScore = Math.random() * 0.6 + 0.3; // 0.3-0.9之间的随机值
-
-                    this.fundResults = {
-                        silhouetteScore: silhouetteScore,
-                        clusters: clusters,
-                        trainingTime: performance.now() - startTime,
-                        clusterDistribution: clusterDistribution,
-                        totalSamples: totalSamples
-                    };
-
-                    resolve();
-                }, 800);
-            });
-        },
-
-        trainInsuranceModel() {
-            return new Promise(resolve => {
-                const startTime = performance.now();
-
-                // 模拟决策树训练
-                setTimeout(() => {
-                    // 模拟特征重要性
-                    const featureImportance = {
-                        age: Math.random() * 0.3 + 0.2,
-                        income: Math.random() * 0.2 + 0.1,
-                        riskTolerance: Math.random() * 0.4 + 0.3,
-                        familySize: Math.random() * 0.1 + 0.05,
-                        healthScore: Math.random() * 0.2 + 0.1
-                    };
-
-                    // 归一化特征重要性
-                    const total = Object.values(featureImportance).reduce((a, b) => a + b, 0);
-                    for (let key in featureImportance) {
-                        featureImportance[key] /= total;
-                    }
-
-                    // 模拟准确率和F1分数
-                    const accuracy = Math.random() * 0.3 + 0.6; // 0.6-0.9之间的随机值
-                    const f1Score = Math.random() * 0.2 + 0.7; // 0.7-0.9之间的随机值
-
-                    this.insuranceResults = {
-                        accuracy: accuracy,
-                        f1Score: f1Score,
-                        trainingTime: performance.now() - startTime,
-                        featureImportance: featureImportance
-                    };
-
-                    resolve();
-                }, 1200);
-            });
-        },
-
-        resetAll() {
-            this.isTraining = false;
-            this.hasData = false;
-            this.hasResults = false;
-            this.overallProgress = 0;
-            this.stockData = [];
+        // --- Clustering Methods ---
+        generateFundData() {
             this.fundData = [];
-            this.insuranceData = [];
-            this.modelProgress = [
-                { name: '股票价格预测', status: '等待训练', completed: false },
-                { name: '基金风险评估', status: '等待训练', completed: false },
-                { name: '保险产品推荐', status: '等待训练', completed: false }
-            ];
-            this.stockResults = {
-                mse: 0,
-                r2: 0,
-                trainingTime: 0,
-                predictions: [],
-                actualValues: []
-            };
-            this.fundResults = {
-                silhouetteScore: 0,
-                clusters: 0,
-                trainingTime: 0,
-                clusterDistribution: {},
-                totalSamples: 0
-            };
-            this.insuranceResults = {
-                accuracy: 0,
-                f1Score: 0,
-                trainingTime: 0,
-                featureImportance: {}
-            };
+            for (let i = 0; i < this.numFunds; i++) {
+                // Generate random return and risk for funds
+                const x = Math.random() * 20 - 5; // Returns between -5% and 15%
+                const y = Math.random() * 15 + 2; // Risk between 2% and 17%
+                this.fundData.push({ x, y, cluster: null });
+            }
         },
 
-        getFeatureLabel(feature) {
-            const labels = {
-                age: '年龄',
-                income: '收入',
-                riskTolerance: '风险承受能力',
-                familySize: '家庭规模',
-                healthScore: '健康状况'
-            };
-            return labels[feature] || feature;
-        }
-    }
+        initializeCentroids() {
+            this.centroids = [];
+            const shuffledData = [...this.fundData].sort(() => 0.5 - Math.random());
+            for (let i = 0; i < this.numClusters; i++) {
+                this.centroids.push({ x: shuffledData[i].x, y: shuffledData[i].y });
+            }
+        },
+
+        assignToClusters() {
+            for (const fund of this.fundData) {
+                let minDistance = Infinity;
+                let closestCentroid = -1;
+
+                for (let i = 0; i < this.centroids.length; i++) {
+                    const centroid = this.centroids[i];
+                    const distance = Math.sqrt(
+                        Math.pow(fund.x - centroid.x, 2) + Math.pow(fund.y - centroid.y, 2)
+                    );
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestCentroid = i;
+                    }
+                }
+                fund.cluster = closestCentroid;
+            }
+        },
+
+        updateCentroids() {
+            const newCentroids = Array(this.numClusters)
+                .fill(null)
+                .map(() => ({ x: 0, y: 0, count: 0 }));
+
+            for (const fund of this.fundData) {
+                if (fund.cluster !== null) {
+                    newCentroids[fund.cluster].x += fund.x;
+                    newCentroids[fund.cluster].y += fund.y;
+                    newCentroids[fund.cluster].count++;
+                }
+            }
+
+            for (let i = 0; i < this.numClusters; i++) {
+                if (newCentroids[i].count > 0) {
+                    this.centroids[i].x = newCentroids[i].x / newCentroids[i].count;
+                    this.centroids[i].y = newCentroids[i].y / newCentroids[i].count;
+                }
+            }
+        },
+
+        performKMeans() {
+            if (this.fundData.length === 0 || this.numClusters < 2) {
+                return;
+            }
+
+            this.initializeCentroids();
+
+            for (let i = 0; i < 10; i++) { // Iterate a few times for convergence
+                this.assignToClusters();
+                this.updateCentroids();
+            }
+        },
+
+        generateFundDataAndCluster() {
+            this.generateFundData();
+            this.performKMeans();
+            this.renderClusterChart();
+        },
+
+        renderClusterChart() {
+            const ctx = document.getElementById('clusterChart').getContext('2d');
+
+            if (this.clusterChart) {
+                this.clusterChart.destroy();
+            }
+
+            const datasets = [];
+            const colors = [
+                'red', 'blue', 'green', 'purple', 'orange', 'brown', 'pink', 'cyan', 'magenta', 'lime'
+            ];
+
+            for (let i = 0; i < this.numClusters; i++) {
+                datasets.push({
+                    label: `聚类 ${i + 1}`,
+                    data: this.fundData.filter(fund => fund.cluster === i),
+                    backgroundColor: colors[i % colors.length],
+                    pointRadius: 5,
+                });
+            }
+
+            // Add centroids to the chart
+            datasets.push({
+                label: '中心点',
+                data: this.centroids,
+                backgroundColor: 'black',
+                borderColor: 'black',
+                pointStyle: 'crossRot',
+                pointRadius: 10,
+                pointBorderWidth: 3,
+            });
+
+            this.clusterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: datasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '预期收益 (%)',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '风险 (波动率 %)',
+                            },
+                        },
+                    },
+                },
+            });
+        },
+
+        // --- Decision Tree Methods ---
+        generateInsuranceData() {
+            this.insuranceData = [];
+            for (let i = 0; i < this.numInsuranceClients; i++) {
+                const age = Math.floor(Math.random() * 60) + 20; // 20-79
+                const income = Math.floor(Math.random() * 100000) + 20000; // 20k-120k
+                const children = Math.floor(Math.random() * 4); // 0-3
+
+                // Simple rule for buying insurance: older, higher income, more children
+                let buysInsurance = 0;
+                if (age > 45 && income > 60000) {
+                    buysInsurance = 1;
+                } else if (age > 30 && children > 1) {
+                    buysInsurance = 1;
+                } else if (income > 80000) {
+                    buysInsurance = 1;
+                }
+                if (Math.random() < 0.2) { // Add some noise
+                    buysInsurance = 1 - buysInsurance;
+                }
+
+                this.insuranceData.push({ age, income, children, buysInsurance });
+            }
+        },
+
+        // Simplified Decision Tree (ID3-like, for demonstration)
+        buildDecisionTree(data, features, target, depth) {
+            if (depth > this.maxDepth || data.length === 0 || new Set(data.map(d => d[target])).size === 1) {
+                const counts = {};
+                data.forEach(d => {
+                    counts[d[target]] = (counts[d[target]] || 0) + 1;
+                });
+                return { type: 'leaf', prediction: Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) };
+            }
+
+            let bestFeature = null;
+            let maxGain = -1;
+
+            for (const feature of features) {
+                const gain = this.calculateInformationGain(data, feature, target);
+                if (gain > maxGain) {
+                    maxGain = gain;
+                    bestFeature = feature;
+                }
+            }
+
+            if (bestFeature === null) {
+                const counts = {};
+                data.forEach(d => {
+                    counts[d[target]] = (counts[d[target]] || 0) + 1;
+                });
+                return { type: 'leaf', prediction: Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b) };
+            }
+
+            const node = { type: 'node', feature: bestFeature, children: {} };
+            const uniqueValues = [...new Set(data.map(d => d[bestFeature]))].sort((a, b) => a - b);
+
+            // For numerical features, create binary splits
+            if (typeof data[0][bestFeature] === 'number') {
+                // Simple median split for demonstration
+                const median = uniqueValues[Math.floor(uniqueValues.length / 2)];
+                const leftData = data.filter(d => d[bestFeature] <= median);
+                const rightData = data.filter(d => d[bestFeature] > median);
+
+                if (leftData.length > 0) {
+                    node.children[`<= ${median}`] = this.buildDecisionTree(leftData, features.filter(f => f !== bestFeature), target, depth + 1);
+                }
+                if (rightData.length > 0) {
+                    node.children[`> ${median}`] = this.buildDecisionTree(rightData, features.filter(f => f !== bestFeature), target, depth + 1);
+                }
+            } else {
+                // For categorical features (not used in this random data, but good practice)
+                for (const value of uniqueValues) {
+                    const subset = data.filter(d => d[bestFeature] === value);
+                    node.children[value] = this.buildDecisionTree(subset, features.filter(f => f !== bestFeature), target, depth + 1);
+                }
+            }
+            return node;
+        },
+
+        calculateInformationGain(data, feature, target) {
+            const entropyBefore = this.calculateEntropy(data, target);
+            const uniqueValues = [...new Set(data.map(d => d[feature]))];
+            let entropyAfter = 0;
+
+            for (const value of uniqueValues) {
+                const subset = data.filter(d => d[feature] === value);
+                const proportion = subset.length / data.length;
+                entropyAfter += proportion * this.calculateEntropy(subset, target);
+            }
+            return entropyBefore - entropyAfter;
+        },
+
+        calculateEntropy(data, target) {
+            const counts = {};
+            data.forEach(d => {
+                counts[d[target]] = (counts[d[target]] || 0) + 1;
+            });
+
+            let entropy = 0;
+            for (const label in counts) {
+                const proportion = counts[label] / data.length;
+                entropy -= proportion * Math.log2(proportion);
+            }
+            return entropy;
+        },
+
+        // Predict method for the decision tree
+        predict(tree, client) {
+            if (tree.type === 'leaf') {
+                return tree.prediction;
+            }
+            const featureValue = client[tree.feature];
+            for (const rule in tree.children) {
+                if (rule.includes('<=')) {
+                    const threshold = parseFloat(rule.replace('<= ', ''));
+                    if (featureValue <= threshold) {
+                        return this.predict(tree.children[rule], client);
+                    }
+                } else if (rule.includes('>')) {
+                    const threshold = parseFloat(rule.replace('> ', ''));
+                    if (featureValue > threshold) {
+                        return this.predict(tree.children[rule], client);
+                    }
+                } else if (featureValue == rule) { // For categorical, if implemented
+                    return this.predict(tree.children[rule], client);
+                }
+            }
+            // Fallback if no rule matches (shouldn't happen with a well-formed tree)
+            return tree.prediction; // Return the most common prediction from the root
+        },
+
+        generateInsuranceDataAndTree() {
+            this.generateInsuranceData();
+            const features = ['age', 'income', 'children'];
+            const target = 'buysInsurance';
+            this.decisionTree = this.buildDecisionTree(this.insuranceData, features, target, 0);
+            this.renderDecisionTreeChart();
+        },
+
+        renderDecisionTreeChart() {
+            const ctx = document.getElementById('decisionTreeChart').getContext('2d');
+
+            if (this.decisionTreeChart) {
+                this.decisionTreeChart.destroy();
+            }
+
+            const datasets = [
+                {
+                    label: '预测不购买保险',
+                    data: [],
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)', // Red for No
+                    pointRadius: 5,
+                },
+                {
+                    label: '预测购买保险',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)', // Green for Yes
+                    pointRadius: 5,
+                },
+            ];
+
+            this.insuranceData.forEach(client => {
+                const prediction = this.predict(this.decisionTree, client);
+                if (prediction == 0) {
+                    datasets[0].data.push({ x: client.age, y: client.income });
+                } else {
+                    datasets[1].data.push({ x: client.age, y: client.income });
+                }
+            });
+
+            this.decisionTreeChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: datasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '年龄',
+                            },
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: '收入',
+                            },
+                        },
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const client = context.raw;
+                                    const originalClient = this.insuranceData.find(d => d.age === client.x && d.income === client.y);
+                                    return `年龄: ${client.x}, 收入: ${client.y}, 子女: ${originalClient.children}, 购买保险: ${originalClient.buysInsurance === 1 ? '是' : '否'} (预测: ${context.dataset.label.includes('购买') ? '是' : '否'})`;
+                                }.bind(this),
+                            },
+                        },
+                    },
+                },
+            });
+        },
+    },
 };
 </script>
 
@@ -609,298 +564,83 @@ export default {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
-    font-family: 'Arial', sans-serif;
-}
-
-.control-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.control-section h2 {
-    color: #0056b3;
-    margin-top: 0;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-}
-
-.control-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: center;
-}
-
-.control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.control-group label {
-    font-weight: bold;
-    color: #555;
-}
-
-.control-group input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-}
-
-.btn-primary {
-    background-color: #409EFF;
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: #337ecc;
-}
-
-.btn-success {
-    background-color: #67C23A;
-    color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-    background-color: #529b2e;
-}
-
-.btn-secondary {
-    background-color: #909399;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background-color: #73767a;
-}
-
-.btn:disabled {
-    background-color: #c0c4cc;
-    cursor: not-allowed;
-}
-
-.progress-section {
-    background-color: #f0f9ff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.progress-container {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.progress-bar {
-    flex: 1;
-    height: 20px;
-    background-color: #e4e7ed;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background-color: #67C23A;
-    transition: width 0.3s ease;
-}
-
-.progress-text {
-    font-weight: bold;
-    color: #67C23A;
-    min-width: 60px;
-}
-
-.model-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.model-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-}
-
-.model-item span:last-child {
-    font-weight: bold;
-}
-
-.model-item span.completed {
-    color: #67C23A;
-}
-
-.results-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.model-result {
-    background-color: white;
-    border-radius: 6px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.model-result h3 {
-    color: #0056b3;
-    margin-top: 0;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.result-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 30px;
-}
-
-.metrics {
-    flex: 1;
-    min-width: 200px;
-}
-
-.metric-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.metric-label {
-    color: #666;
-}
-
-.metric-value {
-    font-weight: bold;
-    color: #333;
-}
-
-.chart-container {
-    flex: 2;
-    min-width: 300px;
-}
-
-.chart-wrapper {
-    background-color: white;
-    border-radius: 6px;
-    padding: 15px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.cluster-results,
-.feature-importance {
-    flex: 1;
-    min-width: 300px;
-}
-
-.cluster-bars,
-.importance-bars {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.cluster-bar,
-.importance-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.bar-label,
-.feature-label {
-    min-width: 80px;
-    font-size: 12px;
-    color: #666;
-}
-
-.bar-container,
-.importance-container {
-    flex: 1;
-    height: 20px;
-    background-color: #e4e7ed;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-}
-
-.bar-fill,
-.importance-fill {
-    height: 100%;
-    background-color: #409EFF;
-    transition: width 0.3s ease;
-}
-
-.bar-text,
-.importance-text {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 10px;
-    color: #333;
-    font-weight: bold;
-}
-
-.comparison-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.comparison-chart {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
+    font-family: Arial, sans-serif;
 }
 
 h1 {
+    text-align: center;
     color: #333;
+    margin-bottom: 40px;
+}
+
+.section {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 40px;
+}
+
+.section h2 {
     text-align: center;
-    margin-bottom: 10px;
-}
-
-h2 {
-    color: #0056b3;
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-h4 {
-    color: #666;
-    margin-bottom: 15px;
-}
-
-p {
-    color: #666;
-    text-align: center;
+    color: #007bff;
     margin-bottom: 30px;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.controls label {
+    font-weight: bold;
+    color: #555;
+    min-width: 120px;
+}
+
+.controls input[type="number"],
+.controls select {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    max-width: 200px;
+}
+
+.controls select {
+    background-color: #e9ecef;
+    color: #333;
+    border: 1px solid #ced4da;
+    min-width: 150px;
+}
+
+.controls button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.controls button:hover {
+    background-color: #0056b3;
+}
+
+.chart-container {
+    position: relative;
+    height: 500px;
+    width: 100%;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
 }
 </style>
